@@ -5,6 +5,7 @@ A scalable, AI-powered pet monitoring system built for Raspberry Pi that detects
 ## Overview
 
 Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, providing:
+
 - **Real-time pet detection** with face recognition for identification
 - **Event classification** (playing, sleeping, eating, etc.)
 - **Automatic video recording** for dynamic activities
@@ -15,6 +16,7 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
 ## Quick Start
 
 ### Prerequisites
+
 - Raspberry Pi 4 with Camera Module V2
 - Python 3.8+
 - Git
@@ -22,38 +24,75 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/albertocutone/petlog.git
    cd petlog
    ```
 
-2. **Set up Python environment**
+2. **Install dependencies**
+
+   **For Host Development (macOS/Linux):**
+
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
+   # Install runtime dependencies (system-wide)
+   pip3 install -r requirements.txt
+
+   # Note: Development tools (black, flake8, mypy) are installed globally
+   # Note: picamera2 is NOT installed via pip - it's system-level on Raspberry Pi
    ```
 
-3. **Run the application**
+   **For Raspberry Pi Deployment:**
+
    ```bash
-   python main.py
+   # First-time setup (only needed once)
+   python scripts/deploy.py --first-setup
+
+   # Regular deployments (after first setup)
+   python scripts/deploy.py
    ```
+
+   **Important Note about picamera2:**
+   The `picamera2` library is installed system-wide on Raspberry Pi using:
+
+   ```bash
+   sudo apt install python3-picamera2
+   ```
+
+   It is NOT installed via pip because it doesn't work properly with pip installations. The deploy script handles this automatically during first-time setup with the `--first-setup` flag.
+
+3. **Verify installation (Raspberry Pi only)**
+
+   ```bash
+   # Test camera hardware
+   python tests/HW/test_camera.py
+   ```
+
+4. **Run the application**
+
+   ```bash
+   python src/main.py
+   ```
+
 
 ### Development Setup
 
 For development work, please read the [development guidelines](context.md) first.
 
 1. **Create a feature branch**
+
    ```bash
    git checkout -b feat/your-feature-name
    ```
 
 2. **Follow conventional commit format**
+
    ```bash
    git commit -m "feat(scope): description of changes"
    ```
 
 3. **Run tests before committing**
+
    ```bash
    pytest tests/
    ```
