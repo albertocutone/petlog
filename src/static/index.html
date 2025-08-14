@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetLog Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">🐾 PetLog Dashboard</h1>
+                <div class="status-indicator">
+                    <span id="connection-status" class="status-dot offline"></span>
+                    <span id="connection-text">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Live Video Section -->
+            <section class="video-section">
+                <div class="section-header">
+                    <h2>Live Video Feed</h2>
+                    <div class="video-controls">
+                        <button id="refresh-video" class="btn btn-secondary">🔄 Refresh</button>
+                        <button id="fullscreen-video" class="btn btn-secondary">⛶ Fullscreen</button>
+                    </div>
+                </div>
+                <div class="video-container">
+                    <div id="video-placeholder" class="video-placeholder">
+                        <div class="placeholder-content">
+                            <div class="camera-icon">📹</div>
+                            <p>Live video stream will appear here</p>
+                            <small>Camera status: <span id="camera-status">Checking...</span></small>
+                        </div>
+                    </div>
+                    <video id="live-video" class="video-stream" style="display: none;" autoplay muted>
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </section>
+
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Events Section -->
+                <section class="events-section">
+                    <div class="section-header">
+                        <h2>Recent Events</h2>
+                        <div class="event-filters">
+                            <select id="pet-filter" class="filter-select">
+                                <option value="">All Pets</option>
+                            </select>
+                            <select id="event-type-filter" class="filter-select">
+                                <option value="">All Events</option>
+                                <option value="playing">Playing</option>
+                                <option value="eating">Eating</option>
+                                <option value="sleeping">Sleeping</option>
+                                <option value="grooming">Grooming</option>
+                                <option value="passing_by">Passing By</option>
+                                <option value="sitting">Sitting</option>
+                                <option value="jumping">Jumping</option>
+                                <option value="vocalizing">Vocalizing</option>
+                            </select>
+                            <button id="refresh-events" class="btn btn-primary">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <div class="events-container">
+                        <div id="events-list" class="events-list">
+                            <div class="loading-placeholder">
+                                <div class="spinner"></div>
+                                <p>Loading events...</p>
+                            </div>
+                        </div>
+                        <div class="pagination">
+                            <button id="prev-page" class="btn btn-secondary" disabled>← Previous</button>
+                            <span id="page-info">Page 1 of 1</span>
+                            <button id="next-page" class="btn btn-secondary" disabled>Next →</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Alerts Section -->
+                <section class="alerts-section">
+                    <div class="section-header">
+                        <h2>Alert Configuration</h2>
+                        <button id="save-alerts" class="btn btn-primary">💾 Save</button>
+                    </div>
+                    <div class="alerts-container">
+                        <div class="alert-config">
+                            <div class="config-group">
+                                <label for="alert-enabled">
+                                    <input type="checkbox" id="alert-enabled" checked>
+                                    Enable inactivity alerts
+                                </label>
+                            </div>
+                            <div class="config-group">
+                                <label for="alert-threshold">Alert threshold (minutes):</label>
+                                <input type="number" id="alert-threshold" value="60" min="5" max="1440">
+                            </div>
+                            <div class="config-group">
+                                <label for="user-id">User ID:</label>
+                                <input type="number" id="user-id" value="1" min="1">
+                            </div>
+                        </div>
+                        <div class="alert-status">
+                            <h3>Current Status</h3>
+                            <div id="alert-status-info" class="status-info">
+                                <p>Loading alert status...</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- System Status Section -->
+                <section class="status-section">
+                    <div class="section-header">
+                        <h2>System Status</h2>
+                        <button id="refresh-status" class="btn btn-secondary">🔄 Refresh</button>
+                    </div>
+                    <div class="status-container">
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <div class="status-label">API Server</div>
+                                <div id="api-status" class="status-value">Checking...</div>
+                            </div>
+                            <div class="status-item">
+                                <div class="status-label">Camera</div>
+                                <div id="camera-status-detail" class="status-value">Checking...</div>
+                            </div>
+                            <div class="status-item">
+                                <div class="status-label">Database</div>
+                                <div id="database-status" class="status-value">Checking...</div>
+                            </div>
+                            <div class="status-item">
+                                <div class="status-label">Storage Usage</div>
+                                <div id="storage-usage" class="status-value">Checking...</div>
+                            </div>
+                        </div>
+                        <div class="last-updated">
+                            Last updated: <span id="last-updated-time">Never</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 PetLog Dashboard | <a href="/docs" target="_blank">API Documentation</a></p>
+        </footer>
+    </div>
+
+    <!-- Event Detail Modal -->
+    <div id="event-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Event Details</h3>
+                <button id="close-modal" class="close-btn">&times;</button>
+            </div>
+            <div id="event-details" class="modal-body">
+                <!-- Event details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

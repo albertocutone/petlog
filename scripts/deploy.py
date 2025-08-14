@@ -16,7 +16,6 @@ def run_ssh_command(command: str, description: str) -> bool:
     """Run a command on the Raspberry Pi via SSH."""
     print(f"{description}...")
     try:
-        # Allow real-time output streaming to terminal
         result = subprocess.run(["ssh", PI_HOSTNAME, command], check=True)
         return True
     except subprocess.CalledProcessError as e:
@@ -53,6 +52,7 @@ def sync_project() -> bool:
 
 def install_system_dependencies() -> bool:
     """Install system-level dependencies (picamera2) on Raspberry Pi."""
+
     print("Installing system-level dependencies...")
     install_picamera2_cmd = "sudo apt update && sudo apt install -y python3-picamera2"
     print("Installing python3-picamera2 system-wide...")
@@ -108,8 +108,9 @@ def start_fastapi_server() -> bool:
     print("Starting FastAPI server...")
     server_command = f"cd {PI_PROJECT_PATH} && python3 src/main.py"
     print(f"Running: {server_command}")
-    print("Server will be available at http://192.168.1.74:8000")
+    print(f"Web dashboard will be available at: http://{PI_HOST}:8000")
     print("Press Ctrl+C to stop the server")
+
     try:
         # Use subprocess.run without check=True to allow Ctrl+C interruption
         subprocess.run(["ssh", PI_HOSTNAME, server_command])
@@ -131,13 +132,13 @@ This script handles:
 1. Running tests before deployment
 2. Syncing project files to Raspberry Pi
 3. Installing system-level dependencies
-4. Starting the FastAPI server
+4. Starting the FastAPI server with web dashboard
 
 Usage:
     python scripts/deploy.py --first-setup  # First time setup
     python scripts/deploy.py                # Regular deployment with tests
     python scripts/deploy.py --test-hw      # Run hardware tests after deployment
-    python scripts/deploy.py --run          # Deploy, test, and start FastAPI server""",
+    python scripts/deploy.py --run          # Deploy, test, and start FastAPI server with dashboard""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -151,7 +152,7 @@ Usage:
     parser.add_argument(
         "--run",
         action="store_true",
-        help="Start FastAPI server on Pi after deployment",
+        help="Start FastAPI server with web dashboard on Pi after deployment",
     )
 
     args = parser.parse_args()
@@ -163,7 +164,7 @@ Usage:
         if not first_setup():
             return 1
 
-    # Step 2: Run tests before deployment (except for first-setup)
+    # Step 2: Run tests before deployment (commented out for now)
     # if not run_tests():
     #     print("❌ Deployment aborted due to test failures!")
     #     return 1
@@ -184,7 +185,7 @@ Usage:
             return 1
         print("✓ Hardware tests passed!")
 
-    # Step 6: Handle --run option
+    # Step 6: Start FastAPI server with web dashboard if requested
     if args.run:
         if not start_fastapi_server():
             return 1

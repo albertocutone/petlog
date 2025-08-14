@@ -1,12 +1,15 @@
 # petlog/src/api.py
+import os
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from version import VERSION
+
+from .version import VERSION
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -16,6 +19,12 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Mount static files for the web dashboard
+static_path = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
 
 # Pydantic Models for Data Validation
 
@@ -118,9 +127,28 @@ class HealthStatus(BaseModel):
 # API Endpoints
 
 
-@app.get("/", response_model=Dict[str, str])
-async def root() -> Dict[str, str]:
-    """Root endpoint returning basic API information."""
+@app.get("/", response_class=FileResponse)
+async def dashboard():
+    """Serve the main dashboard page."""
+    static_path = os.path.join(os.path.dirname(__file__), "static")
+    index_path = os.path.join(static_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        return JSONResponse(
+            {
+                "message": "Welcome to PetLog API",
+                "version": VERSION,
+                "status": "running",
+                "documentation": "/docs",
+                "dashboard": "Dashboard files not found",
+            }
+        )
+
+
+@app.get("/api", response_model=Dict[str, str])
+async def api_info() -> Dict[str, str]:
+    """API information endpoint."""
     return {
         "message": "Welcome to PetLog API",
         "version": VERSION,
