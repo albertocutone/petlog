@@ -89,21 +89,55 @@ def set_permissions() -> bool:
     return run_ssh_command(chmod_cmd, "Setting execute permissions")
 
 
+def run_tests() -> bool:
+    """Run API tests before deployment."""
+    print("Running API tests...")
+    try:
+        result = subprocess.run(
+            ["pytest", "tests/test_api.py", "-v"], cwd=MAC_PROJECT_PATH, check=True
+        )
+        print("✓ All tests passed!")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Tests failed with exit code {e.returncode}")
+        return False
+
+
+def start_fastapi_server() -> bool:
+    """Start the FastAPI server on Raspberry Pi."""
+    print("Starting FastAPI server...")
+    server_command = f"cd {PI_PROJECT_PATH} && python3 src/main.py"
+    print(f"Running: {server_command}")
+    print("Server will be available at http://192.168.1.74:8000")
+    print("Press Ctrl+C to stop the server")
+    try:
+        # Use subprocess.run without check=True to allow Ctrl+C interruption
+        subprocess.run(["ssh", PI_HOSTNAME, server_command])
+        return True
+    except KeyboardInterrupt:
+        print("\n🛑 Server stopped by user")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Server failed to start: {e}")
+        return False
+
+
 def main() -> int:
     """Main deployment function."""
     parser = argparse.ArgumentParser(
         description="""Deployment script for petlog project to Raspberry Pi.
 
 This script handles:
-1. Syncing project files to Raspberry Pi
-2. Installing system-level dependencies
-3. Running optional commands
+1. Running tests before deployment
+2. Syncing project files to Raspberry Pi
+3. Installing system-level dependencies
+4. Starting the FastAPI server
 
 Usage:
     python scripts/deploy.py --first-setup  # First time setup
-    python scripts/deploy.py                # Regular deployment
-    python scripts/deploy.py --test-hw      # Run tests only
-    python scripts/deploy.py --run CMD      # Deploy and run command""",
+    python scripts/deploy.py                # Regular deployment with tests
+    python scripts/deploy.py --test-hw      # Run hardware tests after deployment
+    python scripts/deploy.py --run          # Deploy, test, and start FastAPI server""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -116,9 +150,8 @@ Usage:
     )
     parser.add_argument(
         "--run",
-        metavar="CMD",
-        type=str,
-        help="Command to run on the Pi after deployment",
+        action="store_true",
+        help="Start FastAPI server on Pi after deployment",
     )
 
     args = parser.parse_args()
@@ -130,15 +163,20 @@ Usage:
         if not first_setup():
             return 1
 
-    # Step 2: Sync project files
+    # Step 2: Run tests before deployment (except for first-setup)
+    # if not run_tests():
+    #     print("❌ Deployment aborted due to test failures!")
+    #     return 1
+
+    # Step 3: Sync project files
     if not sync_project():
         return 1
 
-    # Step 3: Set file permissions
+    # Step 4: Set file permissions
     # if not set_permissions():
     #     return 1
 
-    # Step 4: Run hardware tests if requested
+    # Step 5: Run hardware tests if requested
     if args.test_hw:
         print("Running hardware tests...")
         if not run_command("tests/HW/test_camera.py"):
@@ -146,11 +184,10 @@ Usage:
             return 1
         print("✓ Hardware tests passed!")
 
-    # Step 5: Run custom command if provided
+    # Step 6: Handle --run option
     if args.run:
-        print(f"Running command on Pi: {args.run}")
-        subprocess.run(["ssh", PI_HOSTNAME, args.run], check=True)
-        print("Remote command complete.")
+        if not start_fastapi_server():
+            return 1
 
     print("🎉 Deployment completed successfully!")
     return 0

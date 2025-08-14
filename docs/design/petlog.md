@@ -45,13 +45,76 @@ The Pet Camera Monitoring System is a scalable, AI-powered solution for monitori
 
 ## API Design
 
-**Endpoints:**
+**Core Endpoints:**
 
+- `GET /` — Root endpoint returning API information
+- `GET /health` — Health check endpoint for monitoring system status
+- `GET /` — Root endpoint returning API information
+
+**Event Management:**
+
+- `GET /events` — List all events (filter by pet, type, date, with pagination)
 - `GET /live` — Live video stream
-- `GET /events` — List all events (filter by pet, type, date)
+- `POST /event` — Log a new pet event
+
+**Pet Management:**
+
+- `GET /pets` — Get all registered pets
+- `POST /pets` — Register a new pet
+
+**Recording Management:**
+
+- `GET /recordings` — List all recordings (filter by date, event)
+- `GET /recordings/{id}` — Download or stream a specific recording file
+
+**Alert Configuration:**
+
+**Event Management:**
+
+- `GET /alerts/config/{user_id}` — Get current alert configuration
+
+**System Status:**
+
+- `GET /camera/status` — Check camera system status
+
+**API Features:**
+
+- **Pydantic Data Validation:** All endpoints use Pydantic models for request/response validation
+- **Automatic Documentation:** Interactive API docs available at `/docs` and `/redoc`
+- **Type Safety:** Full type hints and validation for all data models
+- **Error Handling:** Structured error responses with appropriate HTTP status codes
+- **Filtering & Pagination:** Events and recordings support filtering and pagination
+
+- `GET /events` — List all events (filter by pet, type, date, with pagination)
 - `GET /events/{id}` — Get event details and associated media
-- `GET /recordings` — List all recordings
+- `POST /event` — Log a new pet event
+
+**Pet Management:**
+
+- `GET /pets` — Get all registered pets
+- `POST /pet` — Register a new pet
+
+**Recording Management:**
+
+- `GET /recordings` — List all recordings (filter by date, event)
+- `GET /recordings/{id}` — Download or stream a specific recording file
+
+**Alert Configuration:**
+
 - `POST /alerts/config` — Configure alert preferences
+- `GET /alerts/config/{user_id}` — Get current alert configuration
+
+**System Status:**
+
+- `GET /camera/status` — Check camera system status
+
+**API Features:**
+
+- **Pydantic Data Validation:** All endpoints use Pydantic models for request/response validation
+- **Automatic Documentation:** Interactive API docs available at `/docs` and `/redoc`
+- **Type Safety:** Full type hints and validation for all data models
+- **Error Handling:** Structured error responses with appropriate HTTP status codes
+- **Filtering & Pagination:** Events and recordings support filtering and pagination
 
 ---
 
@@ -151,7 +214,7 @@ sequenceDiagram
 
 ## Class Diagram
 
-https://www.internalfb.com/mermaid/MM10850
+<https://www.internalfb.com/mermaid/MM10850>
 
 ## Detailed Component Design
 
@@ -199,11 +262,13 @@ https://www.internalfb.com/mermaid/MM10850
 ### Technology Stack & Architecture
 
 #### Programming Language & Runtime
+
 - **Python 3.8+**: Chosen for its extensive ecosystem of AI/ML libraries, excellent hardware support on Raspberry Pi, and rapid development capabilities
 - **Virtual environment**: Isolated Python environment to manage dependencies and avoid conflicts
 - **pip for package management**: Standard Python package manager with requirements.txt for reproducible builds
 
 #### Backend Framework
+
 - **FastAPI**: Selected over Flask/Django for:
   - High performance with async support
   - Automatic API documentation generation
@@ -212,6 +277,7 @@ https://www.internalfb.com/mermaid/MM10850
   - Easy WebSocket support for live video streaming
 
 #### Database
+
 - **SQLite**: Chosen for local storage because:
   - Zero-configuration, serverless database
   - Perfect for single-device embedded systems
@@ -220,12 +286,14 @@ https://www.internalfb.com/mermaid/MM10850
   - Minimal resource footprint on Raspberry Pi
 
 #### AI/Computer Vision Stack
+
 - **OpenCV**: Industry standard for computer vision tasks
 - **face_recognition library**: Simplified face detection and recognition built on dlib
 - **NumPy**: Efficient array operations for image processing
 - **Hardware acceleration**: Leverage Raspberry Pi GPU when available
 
 #### Client Interface
+
 - **Web-based dashboard**:
   - Cross-platform compatibility (desktop, mobile, tablet)
   - No app store dependencies
@@ -235,6 +303,7 @@ https://www.internalfb.com/mermaid/MM10850
 ### Infrastructure & Hardware
 
 #### Hardware Platform
+
 - **Raspberry Pi 4**: Chosen for:
   - Sufficient processing power for real-time video analysis
   - Excellent camera module integration
@@ -244,6 +313,7 @@ https://www.internalfb.com/mermaid/MM10850
 - **Camera Module V2**: Official Raspberry Pi camera for reliable integration
 
 #### Storage Strategy
+
 - **Local storage with automatic cleanup**:
   - Recordings stored locally on SD card/USB drive
   - Automatic deletion when storage exceeds 80% capacity
@@ -253,11 +323,13 @@ https://www.internalfb.com/mermaid/MM10850
 ### Security & Operations
 
 #### Security & Access Control
+
 - **HTTPS for remote access**: SSL/TLS encryption for all client communications
 - **Token-based authentication**: JWT or similar for stateless authentication
 - **Local network first**: Primary operation on local network with secure remote access as secondary
 
 #### Deployment & Operations
+
 - **Systemd service**: Run as system service on Raspberry Pi for automatic startup and restart
 - **Log rotation**: Prevent log files from consuming excessive storage
 - **Health monitoring**: Built-in health checks and system monitoring
@@ -266,22 +338,26 @@ https://www.internalfb.com/mermaid/MM10850
 ### Architecture Principles
 
 #### Scalability
+
 - **Horizontal scaling ready**: Architecture supports multiple cameras and devices
 - **Database migration path**: Easy transition from SQLite to PostgreSQL for multi-device deployments
 - **Stateless API design**: Enables load balancing and clustering if needed
 
 #### Reliability
+
 - **Fault tolerance**: System recovers from component failures
 - **Data persistence**: Critical event data survives system restarts
 - **Backup strategies**: Regular database backups and configuration snapshots
 
 #### Maintainability
+
 - **Clear separation of concerns**: Each module has a single responsibility
 - **Comprehensive logging**: Detailed logs for debugging and monitoring
 - **Documentation**: Code comments, API docs, and setup instructions
 - **Type hints**: Python type annotations for better code clarity and IDE support
 
 #### Performance
+
 - **Async processing**: Non-blocking I/O for concurrent operations
 - **Efficient video processing**: Optimized frame processing to minimize CPU usage
 - **Smart recording**: Only record during events to save storage and processing
@@ -290,17 +366,20 @@ https://www.internalfb.com/mermaid/MM10850
 ### Development Environment
 
 #### Local Setup
+
 - **macOS development machine**: Primary development on Apple Silicon Mac
 - **VS Code**: Primary IDE with Python extensions
 - **Virtual environment**: Isolated Python environment for development
 - **Git hooks**: Pre-commit hooks for code formatting and linting
 
 #### Raspberry Pi Deployment
+
 - **Raspberry Pi OS**: Official operating system for optimal hardware support
 - **SSH access**: Remote development and deployment capabilities
 - **Automated deployment script**: `scripts/deploy.py` for streamlined deployments
 
 #### Development Architecture
+
 - **Modular architecture**: Each component (detection, recording, logging, alerts) developed as separate modules
 - **API-first design**: Backend exposes RESTful API that can support multiple client types
 - **Local development**: Code developed on macOS, deployed to Raspberry Pi
@@ -309,12 +388,14 @@ https://www.internalfb.com/mermaid/MM10850
 ### Future Considerations
 
 #### Technology Evolution
+
 - **Container deployment**: Docker support for easier deployment and scaling
 - **Edge AI acceleration**: Support for AI accelerator hardware (Coral TPU, etc.)
 - **Cloud integration**: AWS/Azure/GCP integration for backup and remote processing
 - **Mobile apps**: Native iOS/Android applications for enhanced user experience
 
 #### Feature Expansion
+
 - **Multi-pet support**: Enhanced AI models for multiple pet recognition
 - **Behavioral analytics**: Long-term behavior pattern analysis
 - **Integration APIs**: Support for smart home platforms (Home Assistant, etc.)
@@ -323,6 +404,7 @@ https://www.internalfb.com/mermaid/MM10850
 ### Decision Log
 
 #### Major Technical Decisions
+
 1. **2024-01**: Chose FastAPI over Flask for better async support and automatic documentation
 2. **2024-01**: Selected SQLite over PostgreSQL for initial implementation due to simplicity and embedded nature
 3. **2024-01**: Decided on local-first storage with cloud backup as future enhancement
@@ -330,6 +412,7 @@ https://www.internalfb.com/mermaid/MM10850
 5. **2024-01**: Selected Raspberry Pi 4 over alternatives for optimal price/performance ratio
 
 #### Trade-offs Made
+
 - **Simplicity vs. Scalability**: Chose simpler solutions (SQLite, single-device) with clear migration paths
 - **Performance vs. Cost**: Raspberry Pi provides adequate performance at low cost, with upgrade path available
 - **Development Speed vs. Optimization**: Prioritized rapid development with Python, optimization can be added later
@@ -397,9 +480,8 @@ https://www.internalfb.com/mermaid/MM10850
   - Use cloud-based storage for critical data.
   - Monitor system health and send proactive alerts.
 
-
-
 Revised Actionable Steps:
+
 1. Flash Raspberry Pi OS onto SD card and set up Raspberry Pi 4 with camera module.
 2. Set up Git and initialize a new GitHub project in /Users/albertocutone/local/projects.
 3. Install required system dependencies on Raspberry Pi (Python, pip, camera drivers, etc.).

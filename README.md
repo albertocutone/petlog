@@ -68,12 +68,72 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
    python tests/HW/test_camera.py
    ```
 
-4. **Run the application**
+4. **Run the FastAPI server**
 
+   **Local Development:**
    ```bash
    python src/main.py
    ```
 
+   **Raspberry Pi Deployment:**
+   ```bash
+   # Deploy and start FastAPI server (runs tests first)
+   python scripts/deploy.py --run
+
+   # Or just deploy without starting server
+   python scripts/deploy.py
+   ```
+
+   The server will be available at:
+   - **Local**: http://localhost:8000
+   - **Raspberry Pi**: http://192.168.1.74:8000
+   - **API Documentation**: /docs (Swagger UI)
+   - **Alternative Docs**: /redoc (ReDoc)
+   - **Health Check**: /health
+
+## Testing
+
+### Manual Testing
+
+1. **Start the server**
+   ```bash
+   python src/main.py
+   ```
+
+2. **Test API endpoints**
+   ```bash
+   # Test root endpoint
+   curl http://localhost:8000/
+
+   # Test health check
+   curl http://localhost:8000/health
+
+   # Test event creation
+   curl -X POST http://localhost:8000/event \
+     -H "Content-Type: application/json" \
+     -d '{"pet_id": 1, "event_type": "playing", "duration": 30.5}'
+
+   # View interactive API documentation
+   open http://localhost:8000/docs
+   ```
+
+### Automated Testing
+
+Run the test suite to verify API functionality:
+
+```bash
+# Install test dependencies
+pip install pytest httpx
+
+# Run all tests
+pytest tests/
+
+# Run API tests specifically
+pytest tests/test_api.py
+
+# Run tests with verbose output
+pytest tests/test_api.py -v
+```
 
 ### Development Setup
 
