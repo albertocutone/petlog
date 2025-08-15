@@ -10,8 +10,15 @@ client = TestClient(app)
 
 
 def test_root_endpoint():
-    """Test the root endpoint returns correct API information."""
+    """Test the root endpoint serves the dashboard."""
     response = client.get("/")
+    assert response.status_code == 200
+    # Root endpoint now serves HTML dashboard, not JSON
+
+
+def test_api_info_endpoint():
+    """Test the API info endpoint returns correct information."""
+    response = client.get("/api")
     assert response.status_code == 200
     data = response.json()
     assert data["message"] == "Welcome to PetLog API"
@@ -35,9 +42,9 @@ def test_health_endpoint():
 
 def test_version_consistency():
     """Test that version is consistent across endpoints."""
-    root_response = client.get("/")
-    assert root_response.status_code == 200
-    assert root_response.json()["version"] == VERSION
+    api_response = client.get("/api")
+    assert api_response.status_code == 200
+    assert api_response.json()["version"] == VERSION
 
 
 def test_events_endpoint():

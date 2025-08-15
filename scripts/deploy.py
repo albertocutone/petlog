@@ -90,17 +90,25 @@ def set_permissions() -> bool:
 
 
 def run_tests() -> bool:
-    """Run API tests before deployment."""
+    """Run all tests on Raspberry Pi."""
+    print("Running all tests on Raspberry Pi...")
+    
+    # Run API tests
     print("Running API tests...")
-    try:
-        result = subprocess.run(
-            ["pytest", "tests/test_api.py", "-v"], cwd=MAC_PROJECT_PATH, check=True
-        )
-        print("✓ All tests passed!")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Tests failed with exit code {e.returncode}")
+    api_test_cmd = f"cd {PI_PROJECT_PATH} && python3 -m pytest tests/test_api.py -v"
+    if not run_ssh_command(api_test_cmd, "Running API tests"):
+        print("❌ API tests failed!")
         return False
+    
+    # Run database tests
+    print("Running database tests...")
+    db_test_cmd = f"cd {PI_PROJECT_PATH} && python3 -m pytest tests/test_database.py -v"
+    if not run_ssh_command(db_test_cmd, "Running database tests"):
+        print("❌ Database tests failed!")
+        return False
+    
+    print("✓ All tests passed!")
+    return True
 
 
 def start_fastapi_server() -> bool:
@@ -154,6 +162,11 @@ Usage:
         action="store_true",
         help="Start FastAPI server with web dashboard on Pi after deployment",
     )
+    parser.add_argument(
+        "--no-test",
+        action="store_true",
+        help="Skip running tests before deployment",
+    )
 
     args = parser.parse_args()
 
@@ -164,14 +177,15 @@ Usage:
         if not first_setup():
             return 1
 
-    # Step 2: Run tests before deployment (commented out for now)
-    # if not run_tests():
-    #     print("❌ Deployment aborted due to test failures!")
-    #     return 1
-
-    # Step 3: Sync project files
+    # Step 2: Sync project files first
     if not sync_project():
         return 1
+
+    # Step 3: Run tests after syncing unless --no-test is specified
+    if not args.no_test:
+        if not run_tests():
+            print("❌ Deployment aborted due to test failures!")
+            return 1
 
     # Step 4: Set file permissions
     # if not set_permissions():
