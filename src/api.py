@@ -1,15 +1,25 @@
 # petlog/src/api.py
 import os
+import logging
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .version import VERSION
+from .camera_streaming import camera_manager, mjpeg_streamer, CameraConfig
+
+# Configure logging - console only
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -171,18 +181,134 @@ async def health_check() -> HealthStatus:
     )
 
 
-@app.get("/live")
-async def live_video_stream():
-    """Live video stream endpoint."""
-    # TODO: Implement actual video streaming
-    # This would typically return a StreamingResponse with video frames
-    return JSONResponse(
-        {
-            "message": "Live video stream endpoint - implementation coming soon",
+@app.get("/live/stream")
+async def live_video_stream(request: Request):
+    """Live MJPEG video stream endpoint."""
+    client_ip = request.client.host
+    logger.info(f"MJPEG stream requested from {client_ip}")
+    
+    try:
+        if not camera_manager.camera:
+            logger.info("Camera not initialized, initializing now...")
+            if not camera_manager.initialize():
+                logger.error("Failed to initialize camera for streaming")
+                raise HTTPException(status_code=500, detail="Failed to initialize camera")
+        
+        if not camera_manager.is_streaming:
+            logger.info("Camera not streaming, starting stream...")
+            camera_manager.start_streaming()
+        
+        logger.info(f"Serving MJPEG stream to {client_ip}")
+        return mjpeg_streamer.create_response()
+        
+    except Exception as e:
+        logger.error(f"Error serving MJPEG stream to {client_ip}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/live/start")
+async def start_live_stream(
+    request: Request,
+    record_duration: Optional[int] = None,
+    filename: Optional[str] = None
+) -> Dict[str, Any]:
+    """Start the live video stream with optional recording.
+    
+    Args:
+        record_duration: Duration in seconds to record (optional)
+        filename: Custom filename for recording (optional)
+    """
+    client_ip = request.client.host
+    logger.info(f"Stream start requested from {client_ip} - duration: {record_duration}, filename: {filename}")
+    
+    try:
+        if not camera_manager.camera:
+            logger.info("Camera not initialized, initializing now...")
+            if not camera_manager.initialize():
+                logger.error("Failed to initialize camera")
+                raise HTTPException(status_code=500, detail="Failed to initialize camera")
+        
+        logger.info("Starting camera streaming...")
+        camera_manager.start_streaming()
+        
+        response = {
+            "message": "Live stream started successfully",
+            "status": "streaming",
             "stream_url": "/live/stream",
-            "format": "mjpeg",
+            "active_streams": mjpeg_streamer.get_stream_count()
         }
-    )
+        
+        # Start recording if duration is specified
+        if record_duration is not None:
+            if record_duration <= 0:
+                logger.warning(f"Invalid recording duration: {record_duration}")
+                raise HTTPException(status_code=400, detail="Recording duration must be positive")
+            
+            logger.info(f"Starting recording for {record_duration} seconds...")
+            recording_path = camera_manager.start_recording(filename, record_duration)
+            response.update({
+                "recording": True,
+                "recording_path": recording_path,
+                "recording_duration": record_duration
+            })
+            logger.info(f"Recording started: {recording_path}")
+        
+        logger.info(f"Stream started successfully for {client_ip}")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error starting stream for {client_ip}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/live/stop")
+async def stop_live_stream(request: Request) -> Dict[str, Any]:
+    """Stop the live video stream and any active recording."""
+    client_ip = request.client.host
+    logger.info(f"Stream stop requested from {client_ip}")
+    
+    try:
+        recording_path = None
+        if camera_manager.is_recording:
+            logger.info("Stopping active recording...")
+            recording_path = camera_manager.stop_recording()
+            logger.info(f"Recording stopped: {recording_path}")
+        
+        logger.info("Stopping camera streaming...")
+        camera_manager.stop_streaming()
+        
+        response = {
+            "message": "Live stream stopped successfully",
+            "status": "stopped"
+        }
+        
+        if recording_path:
+            response["recording_stopped"] = True
+            response["recording_path"] = recording_path
+        
+        logger.info(f"Stream stopped successfully for {client_ip}")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error stopping stream for {client_ip}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/live/status")
+async def get_live_status(request: Request) -> Dict[str, Any]:
+    """Get current live stream status."""
+    client_ip = request.client.host
+    logger.debug(f"Stream status requested from {client_ip}")
+    
+    try:
+        status = camera_manager.get_status()
+        status["active_streams"] = mjpeg_streamer.get_stream_count()
+        logger.debug(f"Stream status: {status}")
+        return status
+        
+    except Exception as e:
+        logger.error(f"Error getting stream status for {client_ip}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/events", response_model=EventsResponse)
@@ -289,10 +415,23 @@ async def create_pet(pet: Pet) -> Dict[str, Any]:
 @app.get("/camera/status", response_model=Dict[str, str])
 async def camera_status() -> Dict[str, str]:
     """Check camera system status."""
-    # TODO: Implement actual camera status check
+    status = camera_manager.get_status()
     return {
-        "status": "connected",
-        "resolution": "720p",
-        "fps": "30",
+        "status": "connected" if status["initialized"] else "disconnected",
+        "streaming": "active" if status["streaming"] else "inactive",
+        "recording": "active" if status["recording"] else "inactive",
+        "resolution": f"{status['resolution'][0]}x{status['resolution'][1]}",
+        "fps": str(status["frame_rate"]),
         "last_frame": datetime.now().isoformat(),
     }
+
+
+
+
+# Add cleanup on app shutdown
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up resources on app shutdown."""
+    logger.info("Application shutting down...")
+    camera_manager.cleanup()
+    logger.info("Cleanup completed")

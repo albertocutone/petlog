@@ -1,19 +1,44 @@
-# petlog/main.py
+#!/usr/bin/env python3
+"""
+PetLog main application entry point.
+Starts the FastAPI server with uvicorn.
+"""
+
 import uvicorn
-from api import app
+import logging
+from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
 
 def main():
-    """Main function to run the FastAPI server."""
-    print("Starting PetLog FastAPI server...")
-    print("API Documentation available at: http://localhost:8000/docs")
-    print("Alternative docs at: http://localhost:8000/redoc")
-    uvicorn.run(
-        "api:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    """Start the PetLog FastAPI application."""
+    logger.info("🐾 Starting PetLog application...")
+    
+    # Ensure log file directory exists
+    log_dir = Path.cwd()
+    log_dir.mkdir(exist_ok=True)
+    
+    try:
+        # Start uvicorn server
+        uvicorn.run(
+            "src.api:app",
+            host="192.168.1.74",  # Listen on all interfaces
+            port=8000,
+            reload=True,     # Auto-reload on code changes
+            log_level="info",
+            access_log=True
+        )
+    except KeyboardInterrupt:
+        logger.info("👋 PetLog application stopped by user")
+    except Exception as e:
+        logger.error(f"❌ Failed to start PetLog application: {e}")
+        raise
 
 if __name__ == "__main__":
     main()

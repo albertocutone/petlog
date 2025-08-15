@@ -71,17 +71,64 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
 4. **Run the FastAPI server**
 
    **Local Development:**
+
    ```bash
    python src/main.py
    ```
 
-   **Raspberry Pi Deployment:**
-   ```bash
-   # Deploy and start FastAPI server (runs tests first)
-   python scripts/deploy.py --run
+- **Live Video Streaming**: MJPEG streaming with real-time camera feed
+- **Recording Capability**: Optional video recording with start/stop controls
+- **Web Dashboard**: Modern responsive interface for monitoring and control
+- **AI-Powered Detection**: Uses OpenCV and face recognition for pet identification (coming soon)
+- **Event Logging**: SQLite database for storing event metadata (coming soon)
+- **Remote Access**: Secure HTTPS access with authentication (coming soon)
+- **Storage Management**: Automatic cleanup when storage exceeds 80% (coming soon)
+- **Remote Access**: Secure HTTPS access with authentication (coming soon)
+- **Storage Management**: Automatic cleanup when storage exceeds 80% (coming soon)
 
-   # Or just deploy without starting server
+### Current Features (v0.1.0)
+
+- ✅ **MJPEG Live Streaming**: Real-time camera feed via web browser
+- ✅ **Stream Controls**: Start/stop streaming with web interface
+- ✅ **Recording Controls**: Start/stop recording with optional storage
+- ✅ **Mock Camera Support**: Development mode without actual hardware
+- ✅ **Responsive Dashboard**: Works on desktop and mobile devices
+- ✅ **System Status**: Real-time monitoring of camera and system health
+
+## API Endpoints
+
+### Live Streaming
+
+- `GET /live/stream` - MJPEG video stream
+- `POST /live/start` - Start camera streaming
+- `POST /live/stop` - Stop camera streaming
+- `GET /live/status` - Get streaming status
+
+### Recording
+
+- `POST /live/record/start` - Start recording (requires storage enabled)
+- `POST /live/record/stop` - Stop recording
+- `GET /recordings` - List all recordings (coming soon)
+
+### System
+
+- `GET /health` - System health check
+- `GET /camera/status` - Camera status
+- `GET /` - Web dashboard
+
+  # Or just deploy without starting server
+
+### Current Features (v0.1.0)
+
+- ✅ **MJPEG Live Streaming**: Real-time camera feed via web browser
+- ✅ **Stream Controls**: Start/stop streaming with web interface
+- ✅ **Recording Controls**: Start/stop recording with optional storage
+- ✅ **Mock Camera Support**: Development mode without actual hardware
+- ✅ **Responsive Dashboard**: Works on desktop and mobile devices
+- ✅ **System Status**: Real-time monitoring of camera and system health
+
    python scripts/deploy.py
+
    ```
 
    The server will be available at:
@@ -96,11 +143,13 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
 ### Manual Testing
 
 1. **Start the server**
+
    ```bash
    python src/main.py
    ```
 
 2. **Test API endpoints**
+
    ```bash
    # Test root endpoint
    curl http://localhost:8000/
@@ -205,6 +254,52 @@ petlog/
 
 This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
 
+## Usage
+
+### Starting the Application
+
+1. **Install dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Run the server**
+
+   ```bash
+   python -m src.main
+   ```
+
+3. **Access the dashboard**
+   Open your browser to `http://localhost:8000`
+
+### Camera Configuration
+
+The camera streaming can be configured in `src/camera_streaming.py`:
+
+```python
+camera_config = CameraConfig(
+    resolution=(1280, 720),    # Video resolution
+    frame_rate=15,             # FPS (lower = better performance)
+    quality=85,                # JPEG quality (1-100)
+    enable_storage=False       # Enable/disable recording capability
+)
+```
+
+### Development Mode
+
+The system automatically detects if you're running on a Raspberry Pi. On other systems, it runs in development mode with a mock camera that generates test patterns.
+
+### Recording Videos
+
+To enable video recording:
+
+1. Set `enable_storage=True` in camera configuration
+2. Recordings are saved to the `recordings/` directory
+3. Use the web interface or API endpoints to start/stop recording
+
 ## Status
 
 🚧 **In Development** - This project is currently in active development. Core features are being implemented following the system design specifications.
+
+**Latest Update**: MJPEG live streaming functionality has been implemented with web dashboard controls.
