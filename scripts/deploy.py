@@ -6,17 +6,17 @@ import sys
 
 # --- CONFIGURATION ---
 MAC_PROJECT_PATH = "/Users/albertocutone/local/projects/petlog/"
-PI_USER = "metal"
-PI_HOST = "192.168.1.74"
-PI_PROJECT_PATH = "/home/metal/projects/petlog/"
-PI_HOSTNAME = f"{PI_USER}@{PI_HOST}"
+SERVER_USER = "metal"
+SERVER_HOST = "192.168.1.74"
+SERVER_PROJECT_PATH = "/home/metal/projects/petlog/"
+SERVER_HOSTNAME = f"{SERVER_USER}@{SERVER_HOST}"
 
 
 def run_ssh_command(command: str, description: str) -> bool:
     """Run a command on the Raspberry Pi via SSH."""
     print(f"{description}...")
     try:
-        result = subprocess.run(["ssh", PI_HOSTNAME, command], check=True)
+        result = subprocess.run(["ssh", SERVER_HOSTNAME, command], check=True)
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error: Command failed with exit code {e.returncode}")
@@ -38,7 +38,7 @@ def sync_project() -> bool:
         "--exclude",
         ".pytest_cache",
         MAC_PROJECT_PATH,
-        f"{PI_HOSTNAME}:{PI_PROJECT_PATH}",
+        f"{SERVER_HOSTNAME}:{SERVER_PROJECT_PATH}",
     ]
     print("Syncing project to Pi...")
     try:
@@ -57,7 +57,7 @@ def install_system_dependencies() -> bool:
     install_picamera2_cmd = "sudo apt update && sudo apt install -y python3-picamera2"
     print("Installing python3-picamera2 system-wide...")
     try:
-        subprocess.run(["ssh", PI_HOSTNAME, install_picamera2_cmd], check=True)
+        subprocess.run(["ssh", SERVER_HOSTNAME, install_picamera2_cmd], check=True)
         print("✓ System dependencies installation complete.")
         return True
     except subprocess.CalledProcessError as e:
@@ -79,34 +79,36 @@ def first_setup() -> bool:
 
 def run_command(command: str) -> bool:
     """Run a command using system Python on Raspberry Pi."""
-    python_command = f"cd {PI_PROJECT_PATH} && python3 {command}"
+    python_command = f"cd {SERVER_PROJECT_PATH} && python3 {command}"
     return run_ssh_command(python_command, f"Running command: {command}")
 
 
 def set_permissions() -> bool:
     """Set appropriate file permissions."""
-    chmod_cmd = f"chmod -R u+x {PI_PROJECT_PATH}src/ {PI_PROJECT_PATH}tests/ {PI_PROJECT_PATH}scripts/"
+    chmod_cmd = f"chmod -R u+x {SERVER_PROJECT_PATH}src/ {SERVER_PROJECT_PATH}tests/ {SERVER_PROJECT_PATH}scripts/"
     return run_ssh_command(chmod_cmd, "Setting execute permissions")
 
 
 def run_tests() -> bool:
     """Run all tests on Raspberry Pi."""
     print("Running all tests on Raspberry Pi...")
-    
+
     # Run API tests
     print("Running API tests...")
-    api_test_cmd = f"cd {PI_PROJECT_PATH} && python3 -m pytest tests/test_api.py -v"
+    api_test_cmd = f"cd {SERVER_PROJECT_PATH} && python3 -m pytest tests/test_api.py -v"
     if not run_ssh_command(api_test_cmd, "Running API tests"):
         print("❌ API tests failed!")
         return False
-    
+
     # Run database tests
     print("Running database tests...")
-    db_test_cmd = f"cd {PI_PROJECT_PATH} && python3 -m pytest tests/test_database.py -v"
+    db_test_cmd = (
+        f"cd {SERVER_PROJECT_PATH} && python3 -m pytest tests/test_database.py -v"
+    )
     if not run_ssh_command(db_test_cmd, "Running database tests"):
         print("❌ Database tests failed!")
         return False
-    
+
     print("✓ All tests passed!")
     return True
 
@@ -114,14 +116,14 @@ def run_tests() -> bool:
 def start_fastapi_server() -> bool:
     """Start the FastAPI server on Raspberry Pi."""
     print("Starting FastAPI server...")
-    server_command = f"cd {PI_PROJECT_PATH} && python3 src/main.py"
+    server_command = f"cd {SERVER_PROJECT_PATH} && python3 src/main.py"
     print(f"Running: {server_command}")
-    print(f"Web dashboard will be available at: http://{PI_HOST}:8000")
+    print(f"Web dashboard will be available at: http://{SERVER_HOST}:8000")
     print("Press Ctrl+C to stop the server")
 
     try:
         # Use subprocess.run without check=True to allow Ctrl+C interruption
-        subprocess.run(["ssh", PI_HOSTNAME, server_command])
+        subprocess.run(["ssh", SERVER_HOSTNAME, server_command])
         return True
     except KeyboardInterrupt:
         print("\n🛑 Server stopped by user")
