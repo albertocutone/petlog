@@ -7,6 +7,7 @@ initialization, and basic CRUD operations for the pet monitoring system.
 
 import sqlite3
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -17,14 +18,37 @@ logger = logging.getLogger(__name__)
 class DatabaseManager:
     """Manages SQLite database operations for the pet monitoring system."""
     
-    def __init__(self, db_path: str = "petlog.db"):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Initialize the database manager.
         
         Args:
-            db_path: Path to the SQLite database file
+            db_path: Path to the SQLite database file. If None, will use environment
+                    variable DATABASE_URL or default to project root/petlog.db
         """
-        self.db_path = db_path
+        if db_path is None:
+            # Try to get database path from environment variable
+            database_url = os.getenv("DATABASE_URL", "sqlite:///petlog.db")
+            if database_url.startswith("sqlite:///"):
+                db_filename = database_url.replace("sqlite:///", "")
+                # If it's just a filename, put it in the project root
+                if not os.path.isabs(db_filename):
+                    # Get the project root (parent of src directory)
+                    project_root = Path(__file__).parent.parent
+                    self.db_path = str(project_root / db_filename)
+                else:
+                    self.db_path = db_filename
+            else:
+                # Fallback to project root
+                project_root = Path(__file__).parent.parent
+                self.db_path = str(project_root / "petlog.db")
+        else:
+            self.db_path = db_path
+            
+        # Ensure the directory exists
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"Database will be stored at: {self.db_path}")
         self.init_database()
     
     def get_connection(self) -> sqlite3.Connection:
