@@ -180,7 +180,7 @@ For development work, please read the [development guidelines](context.md) first
    git checkout -b feat/your-feature-name
    ```
 
-2. **Follow conventional commit format**
+2. **Follow [conventional commit format](https://www.conventionalcommits.org/en/v1.0.0/)**
 
    ```bash
    git commit -m "feat(scope): description of changes"
@@ -283,6 +283,34 @@ To enable video recording:
 1. Set `enable_storage=True` in camera configuration
 2. Recordings are saved to the `recordings/` directory
 3. Use the web interface or API endpoints to start/stop recording
+
+## Database Management
+
+### SQLite Web Client Setup
+
+To view and manage the SQLite database through a web interface, install and use `sqlite_web`:
+
+```bash
+pip install sqlite_web
+
+sqlite_web /home/metal/projects/petlog/petlog.db -H 192.168.1.74 -p 8080
+```
+
+Access the database web interface at:
+- **Raspberry Pi**: http://192.168.1.74:8080
+
+## Monitoring Setup
+
+For comprehensive system monitoring, install Netdata for real-time dashboard:
+
+```bash
+# Install Netdata (one-line setup)
+wget -O /tmp/netdata-kickstart.sh https://my-netdata.io/kickstart.sh && sh /tmp/netdata-kickstart.sh
+```
+
+Access monitoring dashboard at:
+- **Raspberry Pi**: http://YOUR_PI_IP:19999 (e.g., http://192.168.1.74:19999)
+
 
 ## Status
 

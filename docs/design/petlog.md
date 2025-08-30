@@ -485,13 +485,13 @@ Revised Actionable Steps:
 1. Flash Raspberry Pi OS onto SD card and set up Raspberry Pi 4 with camera module.
 2. Set up Git and initialize a new GitHub project in /Users/albertocutone/local/projects.
 3. Install required system dependencies on Raspberry Pi (Python, pip, camera drivers, etc.).
-4. Set up Python virtual environment for the project.
-5. Install core Python libraries (FastAPI, OpenCV, face recognition, SQLite, etc.).
+5. Install core Python libraries (FastAPI, OpenCV, object recognition, SQLite, etc.).
 6. Connect and test the camera module with a basic video capture script (hardware validation).
 7. Design and implement the FastAPI backend server with all required API endpoints (live video, events, recordings, alerts).
 8. Develop a simple client interface (web dashboard) for live video, event logs, and alerts.
 9. Design and implement the SQLite database schema (event log, pet, alert config tables).
-10. Develop the Event Detection Module (real-time video analysis, face recognition, event classification).
+10. Develop the Event Detection Module (real-time video analysis, object recognition, event classification).
+
 11. Implement the Video Recorder module (triggered recording, file management, storage limits).
 12. Build the Event Logger to store event metadata and link to recordings.
 13. Develop the Alert System (monitor inactivity, send notifications).
@@ -500,3 +500,6 @@ Revised Actionable Steps:
 16. Test end-to-end system functionality (event detection, recording, logging, alerts, remote access).
 17. Set up automated backups and health checks for reliability.
 18. Document setup, usage, and future improvement steps in the project README.
+
+GRAEVDARY:
+4. Set up Python virtual environment for the project (pycamera does not work in venv)
