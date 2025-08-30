@@ -8,15 +8,15 @@ PetLog implements MJPEG (Motion JPEG) streaming for real-time video monitoring. 
 
 ### Components
 
-1. **CameraManager** - Handles camera initialization, streaming control, and recording
-2. **MJPEGStreamer** - Manages MJPEG frame generation and HTTP streaming
-3. **CameraConfig** - Configuration object for camera settings
+1. **CameraManager** - Handles camera initialization and frame management
+2. **CameraService** - Manages camera operations and configuration
+3. **StreamingService** - Handles MJPEG frame generation and HTTP streaming
 4. **Web Dashboard** - Frontend interface for stream control
 
 ### Data Flow
 
 ```
-Camera Hardware → CameraManager → MJPEGStreamer → HTTP Response → Browser
+Camera Hardware → CameraService → StreamingService → HTTP Response → Browser
 ```
 
 ```mermaid
@@ -50,7 +50,7 @@ sequenceDiagram
 
 ### Camera Settings
 
-Edit `src/camera_streaming.py` to modify camera configuration:
+Camera configuration is managed through the `CameraService` class in `src/camera_service.py`:
 
 ```python
 camera_config = CameraConfig(
@@ -61,6 +61,8 @@ camera_config = CameraConfig(
     storage_path="recordings"  # Directory for recordings
 )
 ```
+
+The streaming service consumes frames from the camera service and handles MJPEG formatting for web delivery.
 
 ### Performance Tuning
 

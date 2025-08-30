@@ -44,7 +44,7 @@ Petlog is a scalable, AI-powered pet monitoring system built for Raspberry Pi th
    Use environment variables and config files for settings. No magic numbers - use named constants with descriptive names.
 
 4. **Conventional Commits Required:**
-   Use conventional commit format for GitHub Actions compatibility:
+   Use [conventional commit format](https://www.conventionalcommits.org/en/v1.0.0/#summary) for GitHub Actions compatibility:
    - `feat(scope): description` for new features
    - `fix(scope): description` for bug fixes
    - `docs: description` for documentation changes
@@ -55,6 +55,7 @@ Petlog is a scalable, AI-powered pet monitoring system built for Raspberry Pi th
 
 6. **Incremental Development:**
    Break work into small, atomic tasks completable in 0.5 hours. Each commit should build and run successfully.
+   Do not add functionality outside of the prompt, just propose them as next steps.
 
 7. **Error Handling and Logging:**
    Implement graceful degradation - system should continue operating when non-critical components fail. Use structured logging with appropriate levels (DEBUG, INFO, WARNING, ERROR, CRITICAL).

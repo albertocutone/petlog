@@ -11,9 +11,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .version import VERSION
-from .camera_streaming import camera_manager, mjpeg_streamer, CameraConfig
+from .streaming_service import get_streaming_service
+from .camera_manager import get_camera_manager
+from .camera_service import CameraConfig
 from .database import get_db
 from .event_tracker import get_event_tracker
+from .detection_service import get_detection_service, start_detection_service, stop_detection_service
 from .models import (
     EventType, 
     Pet, 
@@ -112,18 +115,17 @@ async def live_video_stream(request: Request):
     logger.info(f"MJPEG stream requested from {client_ip}")
     
     try:
-        if not camera_manager.camera:
-            logger.info("Camera not initialized, initializing now...")
-            if not camera_manager.initialize():
-                logger.error("Failed to initialize camera for streaming")
-                raise HTTPException(status_code=500, detail="Failed to initialize camera")
+        streaming_service = get_streaming_service()
         
-        if not camera_manager.is_streaming:
-            logger.info("Camera not streaming, starting stream...")
-            camera_manager.start_streaming()
+        # Ensure streaming service is active
+        if not streaming_service.is_active():
+            logger.info("Streaming service not active, activating...")
+            if not streaming_service.start_streaming():
+                logger.error("Failed to start streaming service")
+                raise HTTPException(status_code=500, detail="Failed to start streaming service")
         
         logger.info(f"Serving MJPEG stream to {client_ip}")
-        return mjpeg_streamer.create_response()
+        return streaming_service.create_stream_response()
         
     except Exception as e:
         logger.error(f"Error serving MJPEG stream to {client_ip}: {e}")
@@ -146,36 +148,24 @@ async def start_live_stream(
     logger.info(f"Stream start requested from {client_ip} - duration: {record_duration}, filename: {filename}")
     
     try:
-        if not camera_manager.camera:
-            logger.info("Camera not initialized, initializing now...")
-            if not camera_manager.initialize():
-                logger.error("Failed to initialize camera")
-                raise HTTPException(status_code=500, detail="Failed to initialize camera")
+        streaming_service = get_streaming_service()
         
-        logger.info("Starting camera streaming...")
-        camera_manager.start_streaming()
+        # Start streaming service
+        if not streaming_service.start_streaming():
+            logger.error("Failed to start streaming service")
+            raise HTTPException(status_code=500, detail="Failed to start streaming service")
         
         response = {
             "message": "Live stream started successfully",
             "status": "streaming",
             "stream_url": "/live/stream",
-            "active_streams": mjpeg_streamer.get_stream_count()
+            "active_streams": streaming_service.get_stream_count()
         }
         
-        # Start recording if duration is specified
+        # TODO: Implement recording functionality in the new architecture
         if record_duration is not None:
-            if record_duration <= 0:
-                logger.warning(f"Invalid recording duration: {record_duration}")
-                raise HTTPException(status_code=400, detail="Recording duration must be positive")
-            
-            logger.info(f"Starting recording for {record_duration} seconds...")
-            recording_path = camera_manager.start_recording(filename, record_duration)
-            response.update({
-                "recording": True,
-                "recording_path": recording_path,
-                "recording_duration": record_duration
-            })
-            logger.info(f"Recording started: {recording_path}")
+            logger.warning("Recording functionality not yet implemented in new architecture")
+            response["recording_note"] = "Recording functionality will be implemented soon"
         
         logger.info(f"Stream started successfully for {client_ip}")
         return response
@@ -192,24 +182,17 @@ async def stop_live_stream(request: Request) -> Dict[str, Any]:
     logger.info(f"Stream stop requested from {client_ip}")
     
     try:
-        recording_path = None
-        if camera_manager.is_recording:
-            logger.info("Stopping active recording...")
-            recording_path = camera_manager.stop_recording()
-            logger.info(f"Recording stopped: {recording_path}")
+        streaming_service = get_streaming_service()
         
-        logger.info("Stopping camera streaming...")
-        camera_manager.stop_streaming()
+        # Stop streaming service (but keep camera service running for detection)
+        streaming_service.stop_streaming()
         
         response = {
             "message": "Live stream stopped successfully",
             "status": "stopped"
         }
         
-        if recording_path:
-            response["recording_stopped"] = True
-            response["recording_path"] = recording_path
-        
+        # TODO: Implement recording functionality in the new architecture
         logger.info(f"Stream stopped successfully for {client_ip}")
         return response
         
@@ -225,8 +208,8 @@ async def get_live_status(request: Request) -> Dict[str, Any]:
     logger.debug(f"Stream status requested from {client_ip}")
     
     try:
-        status = camera_manager.get_status()
-        status["active_streams"] = mjpeg_streamer.get_stream_count()
+        streaming_service = get_streaming_service()
+        status = streaming_service.get_status()
         logger.debug(f"Stream status: {status}")
         return status
         
@@ -422,21 +405,88 @@ async def create_pet(pet: Pet) -> Dict[str, Any]:
 @app.get("/camera/status", response_model=Dict[str, str])
 async def camera_status() -> Dict[str, str]:
     """Check camera system status."""
+    camera_manager = get_camera_manager()
     status = camera_manager.get_status()
     return {
         "status": "connected" if status["initialized"] else "disconnected",
-        "streaming": "active" if status["streaming"] else "inactive",
-        "recording": "active" if status["recording"] else "inactive",
-        "resolution": f"{status['resolution'][0]}x{status['resolution'][1]}",
-        "fps": str(status["frame_rate"]),
-        "last_frame": datetime.now().isoformat(),
+        "streaming": "active" if status.get("running", False) else "inactive",
+        "recording": "inactive",  # TODO: Implement recording in new architecture
+        "resolution": f"{status['resolution'][0]}x{status['resolution'][1]}" if status.get('resolution') else "unknown",
+        "fps": str(status.get("frame_rate", 0)),
+        "last_frame": status.get("latest_frame_time", "never"),
     }
 
 
-# Add cleanup on app shutdown
+# Detection service endpoints
+@app.get("/detection/status")
+async def get_detection_status() -> Dict[str, Any]:
+    """Get current detection service status."""
+    try:
+        detection_service = get_detection_service()
+        return detection_service.get_status()
+    except Exception as e:
+        logger.error(f"Error getting detection status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/detection/start")
+async def start_detection() -> Dict[str, str]:
+    """Start the background detection service."""
+    try:
+        if start_detection_service():
+            return {"message": "Detection service started successfully", "status": "running"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to start detection service")
+    except Exception as e:
+        logger.error(f"Error starting detection service: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/detection/stop")
+async def stop_detection() -> Dict[str, str]:
+    """Stop the background detection service."""
+    try:
+        stop_detection_service()
+        return {"message": "Detection service stopped successfully", "status": "stopped"}
+    except Exception as e:
+        logger.error(f"Error stopping detection service: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on app startup."""
+    logger.info("Application starting up...")
+    
+    # Start camera service first, then detection service
+    try:
+        camera_manager = get_camera_manager()
+        if camera_manager.start():
+            logger.info("Camera service started automatically on startup")
+            
+            if start_detection_service():
+                logger.info("Detection service started automatically on startup")
+            else:
+                logger.warning("Failed to start detection service on startup")
+        else:
+            logger.warning("Failed to start camera service on startup")
+    except Exception as e:
+        logger.error(f"Error starting services on startup: {e}")
+
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up resources on app shutdown."""
     logger.info("Application shutting down...")
-    camera_manager.cleanup()
+    
+    # Stop detection service
+    try:
+        stop_detection_service()
+        logger.info("Detection service stopped")
+    except Exception as e:
+        logger.error(f"Error stopping detection service: {e}")
+    
+    # Clean up camera resources
+    from .camera_manager import cleanup_camera_manager
+    cleanup_camera_manager()
     logger.info("Cleanup completed")

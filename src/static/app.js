@@ -414,22 +414,35 @@ class PetLogDashboard {
 
     async loadSystemStatus() {
         try {
-            const [healthResponse, cameraResponse] = await Promise.all([
+            const [healthResponse, cameraResponse, detectionResponse] = await Promise.all([
                 fetch('/health'),
-                fetch('/camera/status')
+                fetch('/camera/status'),
+                fetch('/detection/status')
             ]);
 
             const healthData = await healthResponse.json();
             const cameraData = await cameraResponse.json();
+            const detectionData = await detectionResponse.json();
 
             // Update system status
             document.getElementById('camera-status').textContent = cameraData.status || 'Unknown';
             document.getElementById('database-status').textContent = healthData.database_status || 'Unknown';
 
+            // Update detection status
+            const detectionStatusElement = document.getElementById('detection-status');
+            if (detectionStatusElement) {
+                detectionStatusElement.textContent = detectionData.running ? 'Running' : 'Stopped';
+            }
+
         } catch (error) {
             console.error('Error loading system status:', error);
             document.getElementById('camera-status').textContent = 'Error';
             document.getElementById('database-status').textContent = 'Error';
+
+            const detectionStatusElement = document.getElementById('detection-status');
+            if (detectionStatusElement) {
+                detectionStatusElement.textContent = 'Error';
+            }
         }
     }
 

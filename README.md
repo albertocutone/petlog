@@ -76,16 +76,6 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
    python src/main.py
    ```
 
-- **Live Video Streaming**: MJPEG streaming with real-time camera feed
-- **Recording Capability**: Optional video recording with start/stop controls
-- **Web Dashboard**: Modern responsive interface for monitoring and control
-- **AI-Powered Detection**: Uses OpenCV and face recognition for pet identification (coming soon)
-- **Event Logging**: SQLite database for storing event metadata (coming soon)
-- **Remote Access**: Secure HTTPS access with authentication (coming soon)
-- **Storage Management**: Automatic cleanup when storage exceeds 80% (coming soon)
-- **Remote Access**: Secure HTTPS access with authentication (coming soon)
-- **Storage Management**: Automatic cleanup when storage exceeds 80% (coming soon)
-
 ### Current Features (v0.1.0)
 
 - ✅ **MJPEG Live Streaming**: Real-time camera feed via web browser
@@ -94,6 +84,13 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
 - ✅ **Mock Camera Support**: Development mode without actual hardware
 - ✅ **Responsive Dashboard**: Works on desktop and mobile devices
 - ✅ **System Status**: Real-time monitoring of camera and system health
+
+### Planned Features
+
+- **AI-Powered Detection**: Uses YoloV11 for pet identification
+- **Event Logging**: SQLite database for storing event metadata
+- **Remote Access**: Secure HTTPS access with authentication
+- **Storage Management**: Automatic cleanup when storage exceeds 80%
 
 ## API Endpoints
 
@@ -116,19 +113,8 @@ Petlog is designed to monitor pets using a Raspberry Pi 4 and camera module, pro
 - `GET /camera/status` - Camera status
 - `GET /` - Web dashboard
 
-  # Or just deploy without starting server
-
-### Current Features (v0.1.0)
-
-- ✅ **MJPEG Live Streaming**: Real-time camera feed via web browser
-- ✅ **Stream Controls**: Start/stop streaming with web interface
-- ✅ **Recording Controls**: Start/stop recording with optional storage
-- ✅ **Mock Camera Support**: Development mode without actual hardware
-- ✅ **Responsive Dashboard**: Works on desktop and mobile devices
-- ✅ **System Status**: Real-time monitoring of camera and system health
-
+   # Or just deploy without starting server
    python scripts/deploy.py
-
    ```
 
    The server will be available at:
@@ -275,7 +261,7 @@ This project is licensed under the terms specified in the [LICENSE](LICENSE) fil
 
 ### Camera Configuration
 
-The camera streaming can be configured in `src/camera_streaming.py`:
+The camera streaming can be configured in `src/camera_service.py`:
 
 ```python
 camera_config = CameraConfig(
