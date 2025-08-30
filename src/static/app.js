@@ -26,6 +26,17 @@ function initializeVideoStream() {
     // Add start/stop stream buttons
     const videoControls = document.querySelector('.video-controls');
 
+    if (!videoControls) {
+        console.error('Video controls container not found');
+        return;
+    }
+
+    // Check if buttons already exist to avoid duplicates
+    if (document.getElementById('start-stream')) {
+        console.log('Stream control buttons already exist');
+        return;
+    }
+
     const startBtn = document.createElement('button');
     startBtn.id = 'start-stream';
     startBtn.className = 'btn btn-primary';
@@ -58,15 +69,19 @@ function initializeVideoStream() {
     });
     recordBtn.style.display = 'none';
 
-    videoControls.insertBefore(recordBtn, refreshBtn);
-    videoControls.insertBefore(stopBtn, refreshBtn);
+    // Insert buttons in the correct order
     videoControls.insertBefore(startBtn, refreshBtn);
+    videoControls.insertBefore(stopBtn, refreshBtn);
+    videoControls.insertBefore(recordBtn, refreshBtn);
 
     // Update existing button handlers
     refreshBtn.onclick = refreshVideoStream;
     fullscreenBtn.onclick = toggleFullscreen;
 
     console.log('Video stream controls initialized');
+    console.log('Start button:', startBtn);
+    console.log('Stop button:', stopBtn);
+    console.log('Record button:', recordBtn);
 }
 
 async function startVideoStream() {
