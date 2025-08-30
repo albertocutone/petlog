@@ -19,12 +19,12 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import FileOutput
 
+from .detection import DetectionConfig, prediction
+
 logger = logging.getLogger(__name__)
 
 
 class CameraConfig:
-    """Configuration for camera streaming."""
-
     def __init__(
         self,
         resolution: tuple = (1280, 720),
@@ -55,15 +55,15 @@ class CameraConfig:
 class CameraManager:
     """Manages camera operations for streaming and recording."""
 
-    def __init__(self, config: CameraConfig):
+    def __init__(self, config: CameraConfig, detection_config: DetectionConfig):
         self.config = config
+        self.detection_config = detection_config
         self.camera = None
         self.is_streaming = False
         self.is_recording = False
         self.current_recording_path = None
         self._lock = threading.Lock()
 
-        # Create storage directory if needed
         if self.config.enable_storage:
             Path(self.config.storage_path).mkdir(exist_ok=True)
 
@@ -77,11 +77,15 @@ class CameraManager:
 
                 self.camera = Picamera2()
 
-                # Configure for streaming
                 camera_config = self.camera.create_video_configuration(
                     main={"size": self.config.resolution, "format": "RGB888"}
                 )
                 self.camera.configure(camera_config)
+
+                self.camera.set_controls({
+                    "AwbEnable": True,
+                    "AwbMode": 0,
+                })
 
                 logger.info(
                     f"Camera initialized with resolution {self.config.resolution}"
@@ -104,7 +108,7 @@ class CameraManager:
 
             try:
                 self.camera.start()
-                time.sleep(1)  # Allow camera to warm up
+                time.sleep(1)
 
                 self.is_streaming = True
                 logger.info("Camera streaming started")
@@ -201,18 +205,33 @@ class CameraManager:
                 return None
 
     def capture_frame(self) -> bytes:
-        """Capture a single frame as JPEG bytes."""
+        """Capture a single frame as JPEG bytes with optional object detection."""
         if not self.is_streaming:
             raise HTTPException(status_code=400, detail="Camera not streaming")
 
         try:
-            # Capture frame from camera
             frame = self.camera.capture_array()
-
-            # Rotate image 180 degrees
             frame = cv2.rotate(frame, cv2.ROTATE_180)
 
-            # Convert to JPEG
+            if self.detection_config.enabled:
+                try:
+                    annotated_frame, detections = prediction(
+                        config=self.detection_config,
+                        image=frame
+                    )
+                    
+                    frame = annotated_frame
+                    
+                    if detections:
+                        class_counts = {}
+                        for det in detections:
+                            class_name = det['class_name']
+                            class_counts[class_name] = class_counts.get(class_name, 0) + 1
+                        logger.info(f"Objects detected: {dict(class_counts)}")
+                        
+                except Exception as e:
+                    logger.error(f"Detection failed, using original frame: {e}")
+
             _, jpeg_buffer = cv2.imencode(
                 ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, self.config.quality]
             )
@@ -231,6 +250,8 @@ class CameraManager:
             "resolution": self.config.resolution,
             "frame_rate": self.config.frame_rate,
             "storage_enabled": self.config.enable_storage,
+            "detection_enabled": self.detection_config.enabled,
+            "detection_model": self.detection_config.model_name,
             "current_recording": (
                 str(self.current_recording_path)
                 if self.current_recording_path
@@ -274,13 +295,8 @@ class MJPEGStreamer:
         try:
             while self.camera_manager.is_streaming:
                 try:
-                    # Capture frame
                     frame_data = self.camera_manager.capture_frame()
-
-                    # Format as MJPEG
                     yield self.format_frame(frame_data)
-
-                    # Control frame rate
                     time.sleep(1.0 / self.camera_manager.config.frame_rate)
 
                 except Exception as e:
@@ -315,14 +331,21 @@ class MJPEGStreamer:
         return self.active_streams
 
 
-# Global instances
+# Global instances with YOLO11 NCNN detection enabled
 camera_config = CameraConfig(
     resolution=(1280, 720),
-    frame_rate=15,  # Lower for better performance
+    frame_rate=72,
     quality=85,
-    enable_storage=True,  # Enable storage for recording
+    enable_storage=True,
     storage_path="recordings",
 )
 
-camera_manager = CameraManager(camera_config)
+detection_config = DetectionConfig(
+    enabled=True,
+    model_name="yolo11n",
+    confidence=0.5,
+    target_classes=None,
+)
+
+camera_manager = CameraManager(camera_config, detection_config)
 mjpeg_streamer = MJPEGStreamer(camera_manager)
