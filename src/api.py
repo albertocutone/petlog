@@ -1,6 +1,6 @@
 # petlog/src/api.py
-import os
 import logging
+import os
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -10,28 +10,34 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .version import VERSION
-from .streaming_service import get_streaming_service
 from .camera_manager import get_camera_manager
 from .camera_service import CameraConfig
 from .database import get_db
-from .event_tracker import get_event_tracker
-from .detection_service import get_detection_service, start_detection_service, stop_detection_service
-from .models import (
-    EventType, 
-    Pet, 
-    Event, 
-    EventCreate, 
-    Recording, 
-    AlertConfig, 
-    HealthCheck,
-    PaginatedResponse
+from .detection_service import (
+    get_detection_service,
+    start_detection_service,
+    stop_detection_service,
 )
+from .event_tracker import get_event_tracker
+from .models import (
+    AlertConfig,
+    Event,
+    EventCreate,
+    EventType,
+    HealthCheck,
+    PaginatedResponse,
+    Pet,
+    PetGender,
+    PetSpecies,
+    Recording,
+)
+from .streaming_service import get_streaming_service
+
+from .version import VERSION
 
 # Configure logging - console only
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 logger = logging.getLogger(__name__)
@@ -53,8 +59,10 @@ if os.path.exists(static_path):
 
 # All data models are now imported from models.py - single source of truth
 
+
 class EventsResponse(BaseModel):
     """Response model for events listing."""
+
     events: List[Event]
     total_count: int
     page: int
@@ -113,20 +121,22 @@ async def live_video_stream(request: Request):
     """Live MJPEG video stream endpoint."""
     client_ip = request.client.host
     logger.info(f"MJPEG stream requested from {client_ip}")
-    
+
     try:
         streaming_service = get_streaming_service()
-        
+
         # Ensure streaming service is active
         if not streaming_service.is_active():
             logger.info("Streaming service not active, activating...")
             if not streaming_service.start_streaming():
                 logger.error("Failed to start streaming service")
-                raise HTTPException(status_code=500, detail="Failed to start streaming service")
-        
+                raise HTTPException(
+                    status_code=500, detail="Failed to start streaming service"
+                )
+
         logger.info(f"Serving MJPEG stream to {client_ip}")
         return streaming_service.create_stream_response()
-        
+
     except Exception as e:
         logger.error(f"Error serving MJPEG stream to {client_ip}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -136,40 +146,48 @@ async def live_video_stream(request: Request):
 async def start_live_stream(
     request: Request,
     record_duration: Optional[int] = None,
-    filename: Optional[str] = None
+    filename: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Start the live video stream with optional recording.
-    
+
     Args:
         record_duration: Duration in seconds to record (optional)
         filename: Custom filename for recording (optional)
     """
     client_ip = request.client.host
-    logger.info(f"Stream start requested from {client_ip} - duration: {record_duration}, filename: {filename}")
-    
+    logger.info(
+        f"Stream start requested from {client_ip} - duration: {record_duration}, filename: {filename}"
+    )
+
     try:
         streaming_service = get_streaming_service()
-        
+
         # Start streaming service
         if not streaming_service.start_streaming():
             logger.error("Failed to start streaming service")
-            raise HTTPException(status_code=500, detail="Failed to start streaming service")
-        
+            raise HTTPException(
+                status_code=500, detail="Failed to start streaming service"
+            )
+
         response = {
             "message": "Live stream started successfully",
             "status": "streaming",
             "stream_url": "/live/stream",
-            "active_streams": streaming_service.get_stream_count()
+            "active_streams": streaming_service.get_stream_count(),
         }
-        
+
         # TODO: Implement recording functionality in the new architecture
         if record_duration is not None:
-            logger.warning("Recording functionality not yet implemented in new architecture")
-            response["recording_note"] = "Recording functionality will be implemented soon"
-        
+            logger.warning(
+                "Recording functionality not yet implemented in new architecture"
+            )
+            response["recording_note"] = (
+                "Recording functionality will be implemented soon"
+            )
+
         logger.info(f"Stream started successfully for {client_ip}")
         return response
-        
+
     except Exception as e:
         logger.error(f"Error starting stream for {client_ip}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -180,22 +198,19 @@ async def stop_live_stream(request: Request) -> Dict[str, Any]:
     """Stop the live video stream and any active recording."""
     client_ip = request.client.host
     logger.info(f"Stream stop requested from {client_ip}")
-    
+
     try:
         streaming_service = get_streaming_service()
-        
+
         # Stop streaming service (but keep camera service running for detection)
         streaming_service.stop_streaming()
-        
-        response = {
-            "message": "Live stream stopped successfully",
-            "status": "stopped"
-        }
-        
+
+        response = {"message": "Live stream stopped successfully", "status": "stopped"}
+
         # TODO: Implement recording functionality in the new architecture
         logger.info(f"Stream stopped successfully for {client_ip}")
         return response
-        
+
     except Exception as e:
         logger.error(f"Error stopping stream for {client_ip}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -206,13 +221,13 @@ async def get_live_status(request: Request) -> Dict[str, Any]:
     """Get current live stream status."""
     client_ip = request.client.host
     logger.debug(f"Stream status requested from {client_ip}")
-    
+
     try:
         streaming_service = get_streaming_service()
         status = streaming_service.get_status()
         logger.debug(f"Stream status: {status}")
         return status
-        
+
     except Exception as e:
         logger.error(f"Error getting stream status for {client_ip}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -235,7 +250,7 @@ async def get_events(
     try:
         db = get_db()
         offset = (page - 1) * page_size
-        
+
         # Get events from database with full date range filtering
         db_events = db.get_events(
             pet_id=pet_id,
@@ -243,30 +258,30 @@ async def get_events(
             start_date=start_date,
             end_date=end_date,
             limit=page_size,
-            offset=offset
+            offset=offset,
         )
-        
+
         # Convert to API format
         events = []
         for db_event in db_events:
             # Create metadata with class_name if it exists as a direct field
-            metadata = db_event.get('metadata') or {}
-            if db_event.get('class_name'):
-                metadata['class_name'] = db_event['class_name']
-            
+            metadata = db_event.get("metadata") or {}
+            if db_event.get("class_name"):
+                metadata["class_name"] = db_event["class_name"]
+
             event = Event(
-                event_id=db_event['event_id'],
-                timestamp=datetime.fromisoformat(db_event['timestamp']),
-                created_at=datetime.fromisoformat(db_event['timestamp']),
-                pet_id=db_event['pet_id'],
-                event_type=EventType(db_event['event_type']),
-                media_path=db_event.get('media_path'),
-                duration=db_event.get('duration'),
-                confidence=db_event.get('confidence'),
-                metadata=metadata if metadata else None
+                event_id=db_event["event_id"],
+                timestamp=datetime.fromisoformat(db_event["timestamp"]),
+                created_at=datetime.fromisoformat(db_event["timestamp"]),
+                pet_id=db_event["pet_id"],
+                event_type=EventType(db_event["event_type"]),
+                media_path=db_event.get("media_path"),
+                duration=db_event.get("duration"),
+                confidence=db_event.get("confidence"),
+                metadata=metadata if metadata else None,
             )
             events.append(event)
-        
+
         # Get total count for pagination
         total_events = db.get_events(
             pet_id=pet_id,
@@ -274,17 +289,14 @@ async def get_events(
             start_date=start_date,
             end_date=end_date,
             limit=999999,  # Large number to get total count
-            offset=0
+            offset=0,
         )
         total_count = len(total_events)
-        
+
         return EventsResponse(
-            events=events,
-            total_count=total_count,
-            page=page,
-            page_size=page_size
+            events=events, total_count=total_count, page=page, page_size=page_size
         )
-        
+
     except Exception as e:
         logger.error(f"Error fetching events: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -296,29 +308,29 @@ async def get_event_details(event_id: int) -> Event:
     try:
         db = get_db()
         db_event = db.get_event_by_id(event_id)
-        
+
         if not db_event:
             raise HTTPException(status_code=404, detail="Event not found")
-        
+
         # Create metadata with class_name if it exists as a direct field
-        metadata = db_event.get('metadata') or {}
-        if db_event.get('class_name'):
-            metadata['class_name'] = db_event['class_name']
-        
+        metadata = db_event.get("metadata") or {}
+        if db_event.get("class_name"):
+            metadata["class_name"] = db_event["class_name"]
+
         event = Event(
-            event_id=db_event['event_id'],
-            timestamp=datetime.fromisoformat(db_event['timestamp']),
-            created_at=datetime.fromisoformat(db_event['timestamp']),
-            pet_id=db_event['pet_id'],
-            event_type=EventType(db_event['event_type']),
-            media_path=db_event.get('media_path'),
-            duration=db_event.get('duration'),
-            confidence=db_event.get('confidence'),
-            metadata=metadata if metadata else None
+            event_id=db_event["event_id"],
+            timestamp=datetime.fromisoformat(db_event["timestamp"]),
+            created_at=datetime.fromisoformat(db_event["timestamp"]),
+            pet_id=db_event["pet_id"],
+            event_type=EventType(db_event["event_type"]),
+            media_path=db_event.get("media_path"),
+            duration=db_event.get("duration"),
+            confidence=db_event.get("confidence"),
+            metadata=metadata if metadata else None,
         )
-        
+
         return event
-        
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail="Event not found")
     except Exception as e:
@@ -384,22 +396,127 @@ async def get_alert_config(user_id: int) -> AlertConfig:
 # Additional utility endpoints
 
 
+class PetCreateRequest(BaseModel):
+    """Request model for creating a new pet."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="Pet's name")
+    species: PetSpecies = Field(..., description="Pet species")
+    breed: Optional[str] = Field(None, max_length=100, description="Pet breed")
+    color: Optional[str] = Field(
+        None, max_length=100, description="Primary color/pattern"
+    )
+    birth_date: Optional[datetime] = Field(None, description="Approximate birth date")
+    gender: PetGender = Field(PetGender.UNKNOWN, description="Pet gender")
+    weight_kg: Optional[float] = Field(None, ge=0.0, description="Weight in kilograms")
+    microchip_id: Optional[str] = Field(
+        None, max_length=50, description="Microchip identifier"
+    )
+    notes: Optional[str] = Field(None, max_length=1000, description="Additional notes")
+
+
 @app.get("/pets", response_model=List[Pet])
 async def get_pets() -> List[Pet]:
     """Get all registered pets."""
-    # TODO: Implement actual database query
-    return []
+    try:
+        db = get_db()
+        db_pets = db.get_pets()
+
+        pets = []
+        for db_pet in db_pets:
+            pet = Pet(
+                pet_id=db_pet["pet_id"],
+                name=db_pet["name"],
+                species=PetSpecies(db_pet["species"]),
+                breed=db_pet.get("breed"),
+                color=db_pet.get("color"),
+                birth_date=(
+                    datetime.fromisoformat(db_pet["birth_date"])
+                    if db_pet.get("birth_date")
+                    else None
+                ),
+                gender=PetGender(db_pet.get("gender", "unknown")),
+                weight_kg=db_pet.get("weight_kg"),
+                microchip_id=db_pet.get("microchip_id"),
+                notes=db_pet.get("notes"),
+                created_at=datetime.fromisoformat(db_pet["created_at"]),
+                updated_at=datetime.fromisoformat(db_pet["updated_at"]),
+            )
+            pets.append(pet)
+
+        return pets
+
+    except Exception as e:
+        logger.error(f"Error fetching pets: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/pet", response_model=Dict[str, Any])
-async def create_pet(pet: Pet) -> Dict[str, Any]:
+@app.post("/pets", response_model=Dict[str, Any])
+async def create_pet(pet_request: PetCreateRequest) -> Dict[str, Any]:
     """Register a new pet."""
-    # TODO: Implement actual pet registration
-    return {
-        "message": "Pet registered successfully",
-        "pet_id": pet.pet_id,
-        "name": pet.name,
-    }
+    try:
+        db = get_db()
+        pet_id = db.add_pet(
+            name=pet_request.name,
+            species=pet_request.species.value,
+            breed=pet_request.breed,
+            color=pet_request.color,
+            birth_date=pet_request.birth_date,
+            gender=pet_request.gender.value,
+            weight_kg=pet_request.weight_kg,
+            microchip_id=pet_request.microchip_id,
+            notes=pet_request.notes,
+        )
+
+        return {
+            "message": "Pet registered successfully",
+            "pet_id": pet_id,
+            "name": pet_request.name,
+            "species": pet_request.species.value,
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating pet: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/pets/{pet_id}", response_model=Pet)
+async def get_pet(pet_id: int) -> Pet:
+    """Get a specific pet by ID."""
+    try:
+        db = get_db()
+        db_pet = db.get_pet_by_id(pet_id)
+
+        if not db_pet:
+            raise HTTPException(status_code=404, detail="Pet not found")
+
+        pet = Pet(
+            pet_id=db_pet["pet_id"],
+            name=db_pet["name"],
+            species=PetSpecies(db_pet["species"]),
+            breed=db_pet.get("breed"),
+            color=db_pet.get("color"),
+            birth_date=(
+                datetime.fromisoformat(db_pet["birth_date"])
+                if db_pet.get("birth_date")
+                else None
+            ),
+            gender=PetGender(db_pet.get("gender", "unknown")),
+            weight_kg=db_pet.get("weight_kg"),
+            microchip_id=db_pet.get("microchip_id"),
+            notes=db_pet.get("notes"),
+            created_at=datetime.fromisoformat(db_pet["created_at"]),
+            updated_at=datetime.fromisoformat(db_pet["updated_at"]),
+        )
+
+        return pet
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    except Exception as e:
+        logger.error(f"Error fetching pet {pet_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/camera/status", response_model=Dict[str, str])
@@ -411,7 +528,11 @@ async def camera_status() -> Dict[str, str]:
         "status": "connected" if status["initialized"] else "disconnected",
         "streaming": "active" if status.get("running", False) else "inactive",
         "recording": "inactive",  # TODO: Implement recording in new architecture
-        "resolution": f"{status['resolution'][0]}x{status['resolution'][1]}" if status.get('resolution') else "unknown",
+        "resolution": (
+            f"{status['resolution'][0]}x{status['resolution'][1]}"
+            if status.get("resolution")
+            else "unknown"
+        ),
         "fps": str(status.get("frame_rate", 0)),
         "last_frame": status.get("latest_frame_time", "never"),
     }
@@ -434,9 +555,14 @@ async def start_detection() -> Dict[str, str]:
     """Start the background detection service."""
     try:
         if start_detection_service():
-            return {"message": "Detection service started successfully", "status": "running"}
+            return {
+                "message": "Detection service started successfully",
+                "status": "running",
+            }
         else:
-            raise HTTPException(status_code=500, detail="Failed to start detection service")
+            raise HTTPException(
+                status_code=500, detail="Failed to start detection service"
+            )
     except Exception as e:
         logger.error(f"Error starting detection service: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -447,7 +573,10 @@ async def stop_detection() -> Dict[str, str]:
     """Stop the background detection service."""
     try:
         stop_detection_service()
-        return {"message": "Detection service stopped successfully", "status": "stopped"}
+        return {
+            "message": "Detection service stopped successfully",
+            "status": "stopped",
+        }
     except Exception as e:
         logger.error(f"Error stopping detection service: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -457,13 +586,13 @@ async def stop_detection() -> Dict[str, str]:
 async def startup_event():
     """Initialize services on app startup."""
     logger.info("Application starting up...")
-    
+
     # Start camera service first, then detection service
     try:
         camera_manager = get_camera_manager()
         if camera_manager.start():
             logger.info("Camera service started automatically on startup")
-            
+
             if start_detection_service():
                 logger.info("Detection service started automatically on startup")
             else:
@@ -478,15 +607,16 @@ async def startup_event():
 async def shutdown_event():
     """Clean up resources on app shutdown."""
     logger.info("Application shutting down...")
-    
+
     # Stop detection service
     try:
         stop_detection_service()
         logger.info("Detection service stopped")
     except Exception as e:
         logger.error(f"Error stopping detection service: {e}")
-    
+
     # Clean up camera resources
     from .camera_manager import cleanup_camera_manager
+
     cleanup_camera_manager()
     logger.info("Cleanup completed")

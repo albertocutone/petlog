@@ -49,6 +49,7 @@ Petlog is a scalable, AI-powered pet monitoring system built for Raspberry Pi th
    - `fix(scope): description` for bug fixes
    - `docs: description` for documentation changes
    - `test(scope): description` for test additions
+   Ask for feedback on the commit title and text before committing.
 
 5. **Test-Driven Development:**
    Write unit tests for all new functionality. Use pytest framework with tests in `tests/` directory mirroring source structure. Mock external dependencies (camera, hardware).
