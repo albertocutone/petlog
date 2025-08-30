@@ -12,6 +12,18 @@ from pydantic import BaseModel, Field
 
 from .version import VERSION
 from .camera_streaming import camera_manager, mjpeg_streamer, CameraConfig
+from .database import get_db
+from .event_tracker import get_event_tracker
+from .models import (
+    EventType, 
+    Pet, 
+    Event, 
+    EventCreate, 
+    Recording, 
+    AlertConfig, 
+    HealthCheck,
+    PaginatedResponse
+)
 
 # Configure logging - console only
 logging.basicConfig(
@@ -36,102 +48,14 @@ if os.path.exists(static_path):
     app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 
-# Pydantic Models for Data Validation
-
-
-class EventType(str, Enum):
-    """Enumeration of possible pet events."""
-
-    ABNORMAL_BEHAVIOR = "abnormal_behavior"
-    DRINKING = "drinking"
-    EATING = "eating"
-    ENTERING_AREA = "entering_area"
-    GROOMING = "grooming"
-    INTERACTING = "interacting"
-    JUMPING = "jumping"
-    LEAVING_AREA = "leaving_area"
-    NO_MOVEMENT = "no_movement"
-    PASSING_BY = "passing_by"
-    PLAYING = "playing"
-    SITTING = "sitting"
-    SLEEPING = "sleeping"
-    VOCALIZING = "vocalizing"
-
-
-class Pet(BaseModel):
-    """Pet model for database representation."""
-
-    pet_id: int
-    name: str
-    face_embedding: Optional[str] = None
-
-
-class EventCreate(BaseModel):
-    """Model for creating new events."""
-
-    pet_id: int = Field(..., description="ID of the pet involved in the event")
-    event_type: EventType = Field(..., description="Type of event detected")
-    duration: Optional[float] = Field(None, description="Duration of event in seconds")
-    confidence: Optional[float] = Field(
-        None, ge=0.0, le=1.0, description="AI confidence score"
-    )
-    metadata: Optional[Dict[str, Any]] = Field(
-        None, description="Additional event metadata"
-    )
-
-
-class Event(BaseModel):
-    """Model for event responses."""
-
-    event_id: int
-    timestamp: datetime
-    pet_id: int
-    event_type: EventType
-    media_path: Optional[str] = None
-    duration: Optional[float] = None
-    confidence: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
-
+# All data models are now imported from models.py - single source of truth
 
 class EventsResponse(BaseModel):
     """Response model for events listing."""
-
     events: List[Event]
     total_count: int
     page: int
     page_size: int
-
-
-class Recording(BaseModel):
-    """Model for recording responses."""
-
-    recording_id: int
-    timestamp: datetime
-    file_path: str
-    file_size: int
-    duration: float
-    event_ids: List[int]
-
-
-class AlertConfig(BaseModel):
-    """Model for alert configuration."""
-
-    user_id: int
-    no_event_threshold: int = Field(
-        ..., description="Threshold in minutes for no-event alerts"
-    )
-    enabled: bool = True
-
-
-class HealthStatus(BaseModel):
-    """Model for health check response."""
-
-    status: str
-    timestamp: datetime
-    service: str
-    camera_status: str
-    database_status: str
-    storage_usage: float
 
 
 # API Endpoints
@@ -167,17 +91,17 @@ async def api_info() -> Dict[str, str]:
     }
 
 
-@app.get("/health", response_model=HealthStatus)
-async def health_check() -> HealthStatus:
+@app.get("/health", response_model=HealthCheck)
+async def health_check() -> HealthCheck:
     """Health check endpoint for monitoring system status."""
     # TODO: Implement actual health checks for camera, database, storage
-    return HealthStatus(
+    return HealthCheck(
         status="healthy",
         timestamp=datetime.now(),
-        service="petlog-api",
-        camera_status="connected",
-        database_status="operational",
-        storage_usage=0.45,  # 45% usage
+        version=VERSION,
+        uptime_seconds=0,  # TODO: Implement actual uptime tracking
+        database_connected=True,  # TODO: Implement actual database check
+        camera_available=True,  # TODO: Implement actual camera check
     )
 
 
@@ -324,16 +248,99 @@ async def get_events(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=1000, description="Number of events per page"),
 ) -> EventsResponse:
-    """Get all events with optional filtering."""
-    # TODO: Implement actual database query with filters
-    return EventsResponse(events=[], total_count=0, page=page, page_size=page_size)
+    """Get all events with optional filtering. end_date is used for filtering date ranges."""
+    try:
+        db = get_db()
+        offset = (page - 1) * page_size
+        
+        # Get events from database with full date range filtering
+        db_events = db.get_events(
+            pet_id=pet_id,
+            event_type=event_type.value if event_type else None,
+            start_date=start_date,
+            end_date=end_date,
+            limit=page_size,
+            offset=offset
+        )
+        
+        # Convert to API format
+        events = []
+        for db_event in db_events:
+            # Create metadata with class_name if it exists as a direct field
+            metadata = db_event.get('metadata') or {}
+            if db_event.get('class_name'):
+                metadata['class_name'] = db_event['class_name']
+            
+            event = Event(
+                event_id=db_event['event_id'],
+                timestamp=datetime.fromisoformat(db_event['timestamp']),
+                created_at=datetime.fromisoformat(db_event['timestamp']),
+                pet_id=db_event['pet_id'],
+                event_type=EventType(db_event['event_type']),
+                media_path=db_event.get('media_path'),
+                duration=db_event.get('duration'),
+                confidence=db_event.get('confidence'),
+                metadata=metadata if metadata else None
+            )
+            events.append(event)
+        
+        # Get total count for pagination
+        total_events = db.get_events(
+            pet_id=pet_id,
+            event_type=event_type.value if event_type else None,
+            start_date=start_date,
+            end_date=end_date,
+            limit=999999,  # Large number to get total count
+            offset=0
+        )
+        total_count = len(total_events)
+        
+        return EventsResponse(
+            events=events,
+            total_count=total_count,
+            page=page,
+            page_size=page_size
+        )
+        
+    except Exception as e:
+        logger.error(f"Error fetching events: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/events/{event_id}", response_model=Event)
 async def get_event_details(event_id: int) -> Event:
     """Get event details and associated media."""
-    # TODO: Implement actual database query
-    raise HTTPException(status_code=404, detail="Event not found")
+    try:
+        db = get_db()
+        db_event = db.get_event_by_id(event_id)
+        
+        if not db_event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Create metadata with class_name if it exists as a direct field
+        metadata = db_event.get('metadata') or {}
+        if db_event.get('class_name'):
+            metadata['class_name'] = db_event['class_name']
+        
+        event = Event(
+            event_id=db_event['event_id'],
+            timestamp=datetime.fromisoformat(db_event['timestamp']),
+            created_at=datetime.fromisoformat(db_event['timestamp']),
+            pet_id=db_event['pet_id'],
+            event_type=EventType(db_event['event_type']),
+            media_path=db_event.get('media_path'),
+            duration=db_event.get('duration'),
+            confidence=db_event.get('confidence'),
+            metadata=metadata if metadata else None
+        )
+        
+        return event
+        
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="Event not found")
+    except Exception as e:
+        logger.error(f"Error fetching event {event_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/event", response_model=Dict[str, Any])
@@ -424,8 +431,6 @@ async def camera_status() -> Dict[str, str]:
         "fps": str(status["frame_rate"]),
         "last_frame": datetime.now().isoformat(),
     }
-
-
 
 
 # Add cleanup on app shutdown

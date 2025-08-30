@@ -13,25 +13,28 @@ from enum import Enum
 
 class EventType(str, Enum):
     """Enumeration of possible pet events."""
-    PASSING_BY = "passing_by"
-    MOVING = "moving"
-    SLEEPING = "sleeping"
-    RESTING = "resting"
-    PLAYING = "playing"
-    EATING = "eating"
-    DRINKING = "drinking"
-    GROOMING = "grooming"
-    JUMPING = "jumping"
-    CLIMBING = "climbing"
-    SITTING = "sitting"
-    LYING_DOWN = "lying_down"
-    INTERACTING = "interacting"
-    VOCALIZING = "vocalizing"
+    # Currently implemented events
     ENTERING_AREA = "entering_area"
     LEAVING_AREA = "leaving_area"
-    ABNORMAL_BEHAVIOR = "abnormal_behavior"
-    NO_MOVEMENT = "no_movement"
-    UNKNOWN = "unknown"
+    
+    # Future event types (not yet implemented)
+    # PASSING_BY = "passing_by"
+    # MOVING = "moving"
+    # SLEEPING = "sleeping"
+    # RESTING = "resting"
+    # PLAYING = "playing"
+    # EATING = "eating"
+    # DRINKING = "drinking"
+    # GROOMING = "grooming"
+    # JUMPING = "jumping"
+    # CLIMBING = "climbing"
+    # SITTING = "sitting"
+    # LYING_DOWN = "lying_down"
+    # INTERACTING = "interacting"
+    # VOCALIZING = "vocalizing"
+    # ABNORMAL_BEHAVIOR = "abnormal_behavior"
+    # NO_MOVEMENT = "no_movement"
+    # UNKNOWN = "unknown"
 
 
 class PetBase(BaseModel):

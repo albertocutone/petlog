@@ -57,6 +57,7 @@ class DatabaseManager:
                         timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         pet_id INTEGER,
                         event_type TEXT NOT NULL,
+                        class_name TEXT,
                         media_path TEXT,
                         duration INTEGER,
                         confidence REAL,
@@ -65,6 +66,14 @@ class DatabaseManager:
                         FOREIGN KEY (pet_id) REFERENCES pets (pet_id)
                     )
                 """)
+                  
+                # Add class_name column if it doesn't exist (for existing databases)
+                try:
+                    cursor.execute("ALTER TABLE event_log ADD COLUMN class_name TEXT")
+                    logger.info("Added class_name column to event_log table")
+                except sqlite3.OperationalError:
+                    # Column already exists, which is fine
+                    pass
                 
                 # Create Alert Config table
                 cursor.execute("""
@@ -169,14 +178,16 @@ class DatabaseManager:
             raise
     
     def log_event(self, pet_id: Optional[int], event_type: str, 
-                  media_path: Optional[str] = None, duration: Optional[int] = None,
-                  confidence: Optional[float] = None, metadata: Optional[Dict] = None) -> int:
+                  class_name: Optional[str] = None, media_path: Optional[str] = None, 
+                  duration: Optional[int] = None, confidence: Optional[float] = None, 
+                  metadata: Optional[Dict] = None) -> int:
         """
         Log a new event to the database.
         
         Args:
             pet_id: ID of the pet involved (can be None for unknown pets)
             event_type: Type of event detected
+            class_name: Object class name (person, cat, dog, etc.)
             media_path: Path to associated media file
             duration: Duration of the event in seconds
             confidence: Confidence score of the detection
@@ -192,12 +203,12 @@ class DatabaseManager:
                 cursor = conn.cursor()
                 cursor.execute("""
                     INSERT INTO event_log 
-                    (pet_id, event_type, media_path, duration, confidence, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (pet_id, event_type, media_path, duration, confidence, metadata_json))
+                    (pet_id, event_type, class_name, media_path, duration, confidence, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (pet_id, event_type, class_name, media_path, duration, confidence, metadata_json))
                 conn.commit()
                 event_id = cursor.lastrowid
-                logger.info(f"Logged event {event_id}: {event_type} for pet {pet_id}")
+                logger.info(f"Logged event {event_id}: {event_type} for {class_name} (pet {pet_id})")
                 return event_id
         except sqlite3.Error as e:
             logger.error(f"Error logging event: {e}")

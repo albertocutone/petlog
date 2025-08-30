@@ -5,6 +5,8 @@ from ultralytics import YOLO
 from typing import Optional, Tuple, List, Dict, Any
 from dataclasses import dataclass
 
+from .event_tracker import get_event_tracker
+
 logger = logging.getLogger(__name__)
 
 COCO_CLASSES = [
@@ -29,7 +31,7 @@ _model_cache = {}
 @dataclass
 class DetectionConfig:
     enabled: bool = True
-    model_name: str = "yolo11n"
+    model_name: str = "yolo11n.pt"
     confidence: float = 0.5
     iou: float = 0.45
     target_classes: Optional[List[str]] = None
@@ -155,7 +157,11 @@ def prediction(
                         2
                     )
         
-        # Log detections
+        # Process events through event tracker
+        event_tracker = get_event_tracker()
+        events_generated = event_tracker.process_detections(detections)
+        
+        # Log detections and events
         if detections:
             class_counts = {}
             for det in detections:
@@ -179,72 +185,3 @@ def prediction(
     except Exception as e:
         logger.error(f"Error during prediction: {e}")
         return image, []
-
-
-def apply_detection_to_frame(
-    frame: np.ndarray,
-    model_type: str = 'yolov8n.pt',
-    confidence: float = 0.5,
-    target_classes: Optional[List[str]] = None
-) -> np.ndarray:
-    """
-    Apply object detection to a camera frame and return annotated frame.
-    This function is designed to integrate with the camera streaming system.
-    
-    Args:
-        frame: Camera frame (BGR format)
-        model_type: YOLO model to use
-        confidence: Detection confidence threshold
-        target_classes: Classes to detect (None for all)
-    
-    Returns:
-        Annotated frame with bounding boxes
-    """
-    try:
-        annotated_frame, detections = prediction(
-            model_type=model_type,
-            image=frame,
-            confidence=confidence,
-            target_classes=target_classes
-        )
-        return annotated_frame
-    except Exception as e:
-        logger.error(f"Error applying detection to frame: {e}")
-        return frame
-
-
-# Example usage functions
-def main():
-    """Example usage of the detection module."""
-    import time
-    
-    # Test with a sample image (you would replace this with actual camera frame)
-    # For testing purposes, create a dummy image
-    test_image = np.zeros((480, 640, 3), dtype=np.uint8)
-    cv2.putText(test_image, "Test Image", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
-    
-    # Run detection
-    start_time = time.time()
-    annotated_image, detections = prediction(
-        model_type='yolov8n.pt',
-        image=test_image,
-        confidence=0.5,
-        display_result=True
-    )
-    
-    inference_time = time.time() - start_time
-    logger.info(f"Inference completed in {inference_time:.3f} seconds")
-    logger.info(f"Found {len(detections)} objects")
-    
-    # Test all object detection
-    annotated_image_all, all_detections = prediction(
-        model_type='yolov8n.pt',
-        image=test_image,
-        confidence=0.5
-    )
-    
-    logger.info(f"Found {len(all_detections)} objects total")
-
-
-if __name__ == "__main__":
-    main()

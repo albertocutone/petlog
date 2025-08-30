@@ -54,13 +54,16 @@ Petlog is a scalable, AI-powered pet monitoring system built for Raspberry Pi th
    Write unit tests for all new functionality. Use pytest framework with tests in `tests/` directory mirroring source structure. Mock external dependencies (camera, hardware).
 
 6. **Incremental Development:**
-   Break work into small, atomic tasks completable in 1-2 hours. Each commit should build and run successfully.
+   Break work into small, atomic tasks completable in 0.5 hours. Each commit should build and run successfully.
 
 7. **Error Handling and Logging:**
    Implement graceful degradation - system should continue operating when non-critical components fail. Use structured logging with appropriate levels (DEBUG, INFO, WARNING, ERROR, CRITICAL).
 
 8. **Raspberry Pi Optimization:**
    Monitor memory usage especially for video processing. Use hardware acceleration when available. Implement automatic cleanup for old recordings.
+
+9. **Remote Development:**
+   Modify the source code on your Mac host, then sync changes to the Raspberry Pi using the deploy script. All test commands should be executed on the Raspberry Pi.
 
 ## Common Commands
 
