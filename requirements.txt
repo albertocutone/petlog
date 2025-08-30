@@ -22,6 +22,11 @@ pydantic==2.5.0
 # Database (SQLite is built into Python)
 # sqlite3  # Built into Python standard library
 
+# === PHASE 2: Event recognition ===
+# torch==2.0.1
+# torchvision==0.15.2
+# ultralytics==8.0.196
+
 # === PHASE 3: Security & Authentication (Coming Soon) ===
 # Authentication and security
 # python-jose[cryptography]==3.3.0

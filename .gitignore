@@ -65,6 +65,8 @@ config.local.*
 .coverage
 htmlcov/
 .pytest_cache/
+!tests/lib/
+
 
 # Jupyter Notebook
 .ipynb_checkpoints

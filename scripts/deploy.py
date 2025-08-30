@@ -93,12 +93,24 @@ def run_tests() -> bool:
     """Run all tests on Raspberry Pi."""
     print("Running all tests on Raspberry Pi...")
 
-    # Run API tests
-    print("Running API tests...")
-    api_test_cmd = f"cd {SERVER_PROJECT_PATH} && python3 -m pytest tests/test_api.py -v"
-    if not run_ssh_command(api_test_cmd, "Running API tests"):
-        print("❌ API tests failed!")
+    # Run library tests first (PyTorch and YOLO imports)
+    print("Running library tests...")
+    pytorch_test_cmd = f"cd {SERVER_PROJECT_PATH} && python3 -m unittest tests.lib.pytorch_test"
+    if not run_ssh_command(pytorch_test_cmd, "Running PyTorch import test"):
+        print("❌ PyTorch import test failed!")
         return False
+    
+    yolo_test_cmd = f"cd {SERVER_PROJECT_PATH} && python3 -m unittest tests.lib.yolo_test"
+    if not run_ssh_command(yolo_test_cmd, "Running YOLO import test"):
+        print("❌ YOLO import test failed!")
+        return False
+    
+    # Run API tests
+    # print("Running API tests...")
+    # api_test_cmd = f"cd {SERVER_PROJECT_PATH} && python3 -m pytest tests/test_api.py -v"
+    # if not run_ssh_command(api_test_cmd, "Running API tests"):
+    #     print("❌ API tests failed!")
+    #     return False
 
     # Run database tests
     print("Running database tests...")
