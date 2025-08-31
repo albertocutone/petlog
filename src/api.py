@@ -108,11 +108,13 @@ async def health_check() -> HealthCheck:
     # TODO: Implement actual health checks for camera, database, storage
     return HealthCheck(
         status="healthy",
+        service="petlog-api",
         timestamp=datetime.now(),
         version=VERSION,
         uptime_seconds=0,  # TODO: Implement actual uptime tracking
-        database_connected=True,  # TODO: Implement actual database check
-        camera_available=True,  # TODO: Implement actual camera check
+        database_status="connected",  # TODO: Implement actual database check
+        camera_status="available",  # TODO: Implement actual camera check
+        storage_usage={"used_percent": 0, "available_gb": 100},  # TODO: Implement actual storage check
     )
 
 

@@ -37,6 +37,8 @@ def sync_project() -> bool:
         "*.pyc",
         "--exclude",
         ".pytest_cache",
+        "--exclude",
+        "*.db",
         MAC_PROJECT_PATH,
         f"{SERVER_HOSTNAME}:{SERVER_PROJECT_PATH}",
     ]
@@ -106,11 +108,11 @@ def run_tests() -> bool:
         return False
     
     # Run API tests
-    # print("Running API tests...")
-    # api_test_cmd = f"cd {SERVER_PROJECT_PATH} && python3 -m pytest tests/test_api.py -v"
-    # if not run_ssh_command(api_test_cmd, "Running API tests"):
-    #     print("❌ API tests failed!")
-    #     return False
+    print("Running API tests...")
+    api_test_cmd = f"cd {SERVER_PROJECT_PATH} && python3 -m pytest tests/test_api.py -v"
+    if not run_ssh_command(api_test_cmd, "Running API tests"):
+        print("❌ API tests failed!")
+        return False
 
     # Run database tests
     print("Running database tests...")

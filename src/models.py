@@ -18,13 +18,13 @@ class EventType(str, Enum):
     # Currently implemented events
     ENTERING_AREA = "entering_area"
     LEAVING_AREA = "leaving_area"
+    PLAYING = "playing"
 
     # Future event types (not yet implemented)
     # PASSING_BY = "passing_by"
     # MOVING = "moving"
     # SLEEPING = "sleeping"
     # RESTING = "resting"
-    # PLAYING = "playing"
     # EATING = "eating"
     # DRINKING = "drinking"
     # GROOMING = "grooming"
@@ -90,7 +90,7 @@ class EventBase(BaseModel):
     pet_id: Optional[int] = Field(None, description="ID of the pet involved")
     event_type: EventType = Field(..., description="Type of event detected")
     media_path: Optional[str] = Field(None, description="Path to associated media file")
-    duration: Optional[int] = Field(
+    duration: Optional[float] = Field(
         None, ge=0, description="Duration of the event in seconds"
     )
     confidence: Optional[float] = Field(
@@ -267,8 +267,10 @@ class HealthCheck(BaseModel):
     """Health check response model."""
 
     status: str = Field(..., description="Health status")
+    service: str = Field(..., description="Service name")
     timestamp: datetime = Field(..., description="Health check timestamp")
     version: str = Field(..., description="Application version")
     uptime_seconds: int = Field(..., ge=0, description="Application uptime in seconds")
-    database_connected: bool = Field(..., description="Database connection status")
-    camera_available: bool = Field(..., description="Camera availability status")
+    database_status: str = Field(..., description="Database status")
+    camera_status: str = Field(..., description="Camera status")
+    storage_usage: Dict[str, Any] = Field(..., description="Storage usage information")
