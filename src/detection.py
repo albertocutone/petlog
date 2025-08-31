@@ -129,8 +129,13 @@ def prediction(
                     # Draw bounding box and label on original image
                     x1, y1, x2, y2 = bbox.astype(int)
                     
-                    # Choose color based on class (person = red, others = green)
-                    color = (0, 0, 255) if class_name == 'person' else (0, 255, 0)
+                    # Choose color based on class (person = red, cat = blue, others = green)
+                    if class_name == 'person':
+                        color = (0, 0, 255)  # Red for person
+                    elif class_name == 'cat':
+                        color = (255, 0, 0)  # Blue for cat
+                    else:
+                        color = (0, 255, 0)  # Green for others
                     
                     # Draw bounding box
                     cv2.rectangle(annotated_image, (x1, y1), (x2, y2), color, 2)
@@ -170,10 +175,14 @@ def prediction(
             
             logger.info(f"Detected objects: {dict(class_counts)}")
             
-            # Special logging for person detection
+            # Special logging for person and cat detection
             person_count = class_counts.get('person', 0)
             if person_count > 0:
                 logger.info(f"PERSON DETECTED! Found {person_count} person(s)")
+            
+            cat_count = class_counts.get('cat', 0)
+            if cat_count > 0:
+                logger.info(f"CAT DETECTED! Found {cat_count} cat(s)")
         
         # Display result if requested (for debugging)
         if display_result:
