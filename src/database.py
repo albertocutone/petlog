@@ -67,86 +67,77 @@ class DatabaseManager:
                 # Create Pet table
                 cursor.execute(
                     """
-                    CREATE TABLE IF NOT EXISTS pets (
-                        pet_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL UNIQUE,
-                        species TEXT NOT NULL,
-                        breed TEXT,
-                        color TEXT,
-                        birth_date DATE,
-                        gender TEXT CHECK(gender IN ('male', 'female', 'unknown')),
-                        weight_kg REAL,
-                        microchip_id TEXT,
-                        notes TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """
+                        CREATE TABLE IF NOT EXISTS pets (
+                            pet_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            species TEXT NOT NULL,
+                            breed TEXT,
+                            color TEXT,
+                            birth_date DATE,
+                            gender TEXT CHECK(gender IN ('male', 'female', 'unknown')),
+                            weight_kg REAL,
+                            microchip_id TEXT,
+                            notes TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """
                 )
 
                 # Create Event Log table
                 cursor.execute(
                     """
-                    CREATE TABLE IF NOT EXISTS event_log (
-                        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        pet_id INTEGER,
-                        event_type TEXT NOT NULL,
-                        class_name TEXT,
-                        media_path TEXT,
-                        duration INTEGER,
-                        confidence REAL,
-                        metadata TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (pet_id) REFERENCES pets (pet_id)
-                    )
-                """
+                        CREATE TABLE IF NOT EXISTS event_log (
+                            event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            pet_id INTEGER,
+                            event_type TEXT NOT NULL,
+                            class_name TEXT,
+                            media_path TEXT,
+                            duration INTEGER,
+                            confidence REAL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (pet_id) REFERENCES pets (pet_id)
+                        )
+                    """
                 )
-
-                # Add class_name column if it doesn't exist (for existing databases)
-                try:
-                    cursor.execute("ALTER TABLE event_log ADD COLUMN class_name TEXT")
-                    logger.info("Added class_name column to event_log table")
-                except sqlite3.OperationalError:
-                    # Column already exists, which is fine
-                    pass
 
                 # Create Alert Config table
                 cursor.execute(
                     """
-                    CREATE TABLE IF NOT EXISTS alert_config (
-                        config_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        no_event_threshold INTEGER NOT NULL DEFAULT 60,
-                        alert_enabled BOOLEAN NOT NULL DEFAULT 1,
-                        notification_methods TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(user_id)
-                    )
-                """
+                        CREATE TABLE IF NOT EXISTS alert_config (
+                            config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id TEXT NOT NULL,
+                            no_event_threshold INTEGER NOT NULL DEFAULT 60,
+                            alert_enabled BOOLEAN NOT NULL DEFAULT 1,
+                            notification_methods TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE(user_id)
+                        )
+                    """
                 )
 
                 # Create indexes for better performance
                 cursor.execute(
                     """
-                    CREATE INDEX IF NOT EXISTS idx_event_log_timestamp 
-                    ON event_log (timestamp)
-                """
+                        CREATE INDEX IF NOT EXISTS idx_event_log_timestamp 
+                        ON event_log (timestamp)
+                    """
                 )
 
                 cursor.execute(
                     """
-                    CREATE INDEX IF NOT EXISTS idx_event_log_pet_id 
-                    ON event_log (pet_id)
-                """
+                        CREATE INDEX IF NOT EXISTS idx_event_log_pet_id 
+                        ON event_log (pet_id)
+                    """
                 )
 
                 cursor.execute(
                     """
-                    CREATE INDEX IF NOT EXISTS idx_event_log_event_type 
-                    ON event_log (event_type)
-                """
+                        CREATE INDEX IF NOT EXISTS idx_event_log_event_type 
+                        ON event_log (event_type)
+                    """
                 )
 
                 conn.commit()
@@ -261,7 +252,6 @@ class DatabaseManager:
         media_path: Optional[str] = None,
         duration: Optional[int] = None,
         confidence: Optional[float] = None,
-        metadata: Optional[Dict] = None,
     ) -> int:
         """
         Log a new event to the database.
@@ -273,21 +263,18 @@ class DatabaseManager:
             media_path: Path to associated media file
             duration: Duration of the event in seconds
             confidence: Confidence score of the detection
-            metadata: Additional metadata as dictionary
 
         Returns:
             The event_id of the newly created event
         """
         try:
-            metadata_json = json.dumps(metadata) if metadata else None
-
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
                     INSERT INTO event_log 
-                    (pet_id, event_type, class_name, media_path, duration, confidence, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (pet_id, event_type, class_name, media_path, duration, confidence)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """,
                     (
                         pet_id,
@@ -296,7 +283,6 @@ class DatabaseManager:
                         media_path,
                         duration,
                         confidence,
-                        metadata_json,
                     ),
                 )
                 conn.commit()
@@ -366,8 +352,6 @@ class DatabaseManager:
                 events = []
                 for row in cursor.fetchall():
                     event = dict(row)
-                    if event["metadata"]:
-                        event["metadata"] = json.loads(event["metadata"])
                     events.append(event)
                 return events
         except sqlite3.Error as e:
@@ -399,8 +383,6 @@ class DatabaseManager:
                 row = cursor.fetchone()
                 if row:
                     event = dict(row)
-                    if event["metadata"]:
-                        event["metadata"] = json.loads(event["metadata"])
                     return event
                 return None
         except sqlite3.Error as e:

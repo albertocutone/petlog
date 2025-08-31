@@ -284,6 +284,23 @@ To enable video recording:
 2. Recordings are saved to the `recordings/` directory
 3. Use the web interface or API endpoints to start/stop recording
 
+## Deployment
+
+### Remote Server Deployment (detached)
+
+To deploy and run the server detached on the remote Raspberry Pi:
+
+```bash
+ssh metal@192.168.1.74 "cd projects/petlog/ && nohup python3 -m uvicorn src.api:app --host 192.168.1.74 --port 8000 > uvicorn.log 2>&1 &"
+```
+
+This command will:
+- SSH to the remote server (192.168.1.74)
+- Navigate to the petlog project directory
+- Start the uvicorn server in detached mode
+- Log output to `uvicorn.log`
+- Keep the server running even after SSH disconnection
+
 ## Database Management
 
 ### SQLite Web Client Setup
