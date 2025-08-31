@@ -45,15 +45,15 @@ def get_model(config: DetectionConfig) -> YOLO:
         logger.info(f"Loading YOLO model: {config.model_name}")
         
         try:
-            model = YOLO(ncnn_model_name)
+            model = YOLO(ncnn_model_name, task='detect')
             logger.info("Loaded existing NCNN model")
         except Exception:
             logger.info("NCNN model not found, creating from PyTorch model...")
-            pytorch_model = YOLO(f"{config.model_name}.pt")
+            pytorch_model = YOLO(f"{config.model_name}.pt", task='detect')
             logger.info("Exporting to NCNN format...")
             pytorch_model.export(format="ncnn")
-            
-            model = YOLO(ncnn_model_name)
+              
+            model = YOLO(ncnn_model_name, task='detect')
             logger.info("NCNN model exported and loaded successfully")
         
         _model_cache[ncnn_model_name] = model
